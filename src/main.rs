@@ -19,6 +19,8 @@ fn main() {
         image::GrayImage::new(2048, 2048);
 
 
+    let z = img.as_flat_samples_mut();
+
     // let a: Arc<RefCell<image::ImageBuffer<image::Luma<u8>, Vec<u8> > > > = Arc::new(RefCell::new(img));
     let mut a = Mutex::new(img.clone());
 
