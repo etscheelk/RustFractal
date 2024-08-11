@@ -105,9 +105,24 @@ where
 fn main() {
     println!("Hello, world!");
 
+    // test();
+
+    let mut img = MutexGrid::<u8>::new(4096, 4096);
+    img.fractalize(1_000_000_000);
+    img.apply_all_in_parallel(4, 
+        |p|
+        (*p as f64).sqrt() as u8
+    );
+
+    let img: MyGreyImage<_> = img.into();
+    let _ = img.save("sqrtimg.png");
+}
+
+fn test() {
     let mut t = Table::<f64>::default();
-    t.name = "SerialMethod4096x4096".to_string();
+    t.name = "SerialMethod8192x8192".to_string();
     
+    const DIM: u32 = 8192;
     const START: usize = 1_000_000;
     const END: usize = 1_000_000_000;
     const NUM_PTS_TESTS: usize = 10;
@@ -133,10 +148,10 @@ fn main() {
 
         for _ in 0..NUM_REPS
         {
-            let time = mutex_grid_fractal_c(4096, cur_pts);
+            let time = mutex_grid_fractal_c(DIM, cur_pts);
             r.add_elem(time);
         }
-        
+    
         t.rows.push(r);
 
         cur_pts = ((cur_pts as f64) * mult).ceil() as usize;

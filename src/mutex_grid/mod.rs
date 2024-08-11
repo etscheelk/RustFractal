@@ -1,4 +1,4 @@
-use std::{f64::consts::PI, io::Write};
+use std::{f64::consts::PI, io::Write, path::Path};
 
 use rand::prelude::*;
 
@@ -164,6 +164,15 @@ where
         MyGreyImage::from_raw(self.width, self.height, self.grid).unwrap()
     }
 }
+
+// impl<P> Into<MyGreyImage<P>> for &MutexGrid<P>
+// where
+//     P: image::Primitive
+// {
+//     fn into(self) -> MyGreyImage<P> {
+//         MyGreyImage::from_raw(self.width, self.height, self.grid.clone()).unwrap()
+//     }
+// }
 
 
 
