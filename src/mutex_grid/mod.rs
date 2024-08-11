@@ -95,27 +95,21 @@ where
         {
             let this_rand = distr.sample(&mut rng);
 
-            match this_rand & 1
+            (x, y) = match this_rand & 1
             {
-                1 =>
-                {
-                    (x, y) = 
-                    (
-                        x * rot.cos() + y * rot.sin(),
-                        y * rot.cos() - x * rot.sin()
-                    );
-                }
-                _ => 
-                {
+                1 => (
+                    x * rot.cos() + y * rot.sin(),
+                    y * rot.cos() - x * rot.sin()
+                ),
+                _ => {
                     let rad = x * 0.5 + 0.5;
                     let theta = y * PI + theta_offset;
-                    (x, y) =
                     (
                         rad * theta.cos(),
                         rad * theta.sin()
-                    );
+                    )
                 }
-            }
+            };
 
             // add point to array
             // assumes square right now
