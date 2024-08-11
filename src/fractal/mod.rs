@@ -31,7 +31,7 @@ where
 
 pub trait Fractalize
 {
-    fn fractalize(&mut self) -> ();
+    fn fractalize(&mut self, num_points: usize) -> ();
 }
 
 pub struct Image
@@ -63,7 +63,7 @@ impl<P> Fractalize for image::ImageBuffer<image::Luma<P>, Vec<P> >
 where
     P: image::Primitive + num_traits::CheckedAdd,
 {
-    fn fractalize(&mut self) -> () 
+    fn fractalize(&mut self, num_points: usize) -> () 
     {
         let mut x: f64 = 0.0;
         let mut y: f64 = 0.5;
@@ -120,7 +120,7 @@ impl<P> Fractalize for Mutex<image::ImageBuffer<image::Luma<P>, Vec<P> > >
 where
     P: image::Primitive + num_traits::CheckedAdd 
 {
-    fn fractalize(&mut self) -> () 
+    fn fractalize(&mut self, num_points: usize) -> () 
     {
         let mut x: f64 = 0.0;
         let mut y: f64 = 0.5;

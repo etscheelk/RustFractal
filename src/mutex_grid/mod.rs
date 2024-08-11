@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{f64::consts::PI, io::Write};
 
 use rand::prelude::*;
 
@@ -25,7 +25,7 @@ where
         }
     }
 
-    pub fn apply_in_parallel<F>(&mut self, threads: u16, mut f: F)
+    pub fn apply_all_in_parallel<F>(&mut self, threads: u16, mut f: F)
     where
         F: FnMut(&mut P) -> P + Send + Sync + Copy,
         P: Send + Sync
@@ -33,7 +33,7 @@ where
         let chunk_size = ((self.grid.len() as f64) / (threads as f64)).ceil() as usize;
         let slice = self.grid.as_mut_slice();
 
-        let r = crossbeam::scope(|scope| {
+        crossbeam::scope(|scope| {
             slice
             .chunks_mut(chunk_size)
             .for_each(
@@ -52,30 +52,83 @@ where
         })
         .expect("Some thread panicked");
     }
+
+    pub fn r#static(&mut self) -> () 
+    where
+        P: num_traits::CheckedAdd
+    {
+        let distr = 
+            rand::distributions::Uniform::new(0, self.width);
+        let mut rng = rand::thread_rng();
+        for _ in 0..1_000_000_000
+        {
+            let x = distr.sample(&mut rng);
+            let y = distr.sample(&mut rng);
+
+            let a = self.grid.get_mut((y * self.width + x) as usize).unwrap();
+
+            *a = match P::checked_add(a, &P::one())
+            {
+                Some(v) => v,
+                None => *a
+            }
+        }
+    }
 }
 
 impl<T> crate::fractal::Fractalize for MutexGrid<T>
 where
     T: image::Primitive + num_traits::CheckedAdd,
 {
-    fn fractalize(&mut self) -> () {
+    fn fractalize(&mut self, num_points: usize) -> () {
         let distr = 
             rand::distributions::Uniform::new(0, self.width);
         let mut rng = rand::thread_rng();
-        for _ in 0..10_000_000
+
+        let mut x: f64 = 0.0;
+        let mut y: f64 = 0.5;
+        
+        let rot: f64 = 1.724643921305295;
+        let theta_offset: f64 = 3.0466792337230033;
+
+        for _ in 0..num_points
         {
-            let x = distr.sample(&mut rng);
-            let y = distr.sample(&mut rng);
+            let this_rand = distr.sample(&mut rng);
 
-            // println!("{}x{}, x: {}, y: {}", self.width, self.height, x, y);
-
-            let a = self.grid.get_mut((y * self.width + x) as usize).unwrap();
-            // *a = *a + T::one();
-
-            *a = match T::checked_add(a, &T::one())
+            match this_rand & 1
             {
-                Some(v) => v,
-                None => *a
+                1 =>
+                {
+                    (x, y) = 
+                    (
+                        x * rot.cos() + y * rot.sin(),
+                        y * rot.cos() - x * rot.sin()
+                    );
+                }
+                _ => 
+                {
+                    let rad = x * 0.5 + 0.5;
+                    let theta = y * PI + theta_offset;
+                    (x, y) =
+                    (
+                        rad * theta.cos(),
+                        rad * theta.sin()
+                    );
+                }
+            }
+
+            // add point to array
+            // assumes square right now
+            let xx = (x / 2.0 + 0.5) * self.width as f64;
+            let yy = (y / 2.0 + 0.5) * self.height as f64;
+
+            if let Some(pixel) = self.grid.get_mut(yy as usize * self.width as usize + xx as usize)
+            {
+                *pixel = match pixel.checked_add(&T::one())
+                {
+                    Some(v) => v,
+                    None => *pixel
+                }
             }
         }
     }
@@ -108,9 +161,6 @@ where
     fn into(self) -> MyGreyImage<P> {
         // from_raw fails if the buffer is not large enough.
         // But we know the buffer will have the right size so it will not fail 
-        println!("length of grid buffer: {}", self.grid.len());
-        let _ = std::io::stdout().flush();
-
         MyGreyImage::from_raw(self.width, self.height, self.grid).unwrap()
     }
 }
@@ -125,7 +175,7 @@ mod test
     {
         use crate::fractal::Fractalize;
         let mut img = super::MutexGrid::<u8>::new(1024, 1024);
-        img.fractalize();
+        img.fractalize(10_000_000);
 
         let img: super::MyGreyImage<_> = img.into();
         let _ = img.save("image_a.png");
