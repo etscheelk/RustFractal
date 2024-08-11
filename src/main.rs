@@ -1,51 +1,40 @@
 use std::{cell::RefCell, sync::{atomic::AtomicU16, Arc, Mutex}};
 
 use image::{GenericImage, ImageBuffer, Luma};
-use RustFractal::fractal::Fractalize;
+use RustFractal::{fractal::Fractalize, mutex_grid::{MutexGrid, MyGreyImage}};
 
 type GreyImageHigh = image::ImageBuffer<image::Luma<u16>, Vec<u16> >;
 
 struct w(AtomicU16);
 
+fn test_a()
+{
+    let mut img: image::ImageBuffer<image::Luma<u8>, Vec<u8> > = 
+        image::GrayImage::new(2048, 2048);
 
+    img.fractalize();
+
+    let _ = img.save("test_a.png");
+}
+
+fn mutex_grid_test_b()
+{
+    let mut img = 
+        MutexGrid::<u8>::new(512, 512);
+    
+    img.fractalize();
+
+    img.apply_in_parallel(4, |p| *p * *p);
+    img.apply_in_parallel(4, |p| (*p).pow(8));
+
+
+    let img: MyGreyImage<_> = img.into();
+    let _ = img.save("mutex_grid_rand.png");
+}
 
 fn main() {
     println!("Hello, world!");
 
-    // let img: image::ImageBuffer<image::Luma<u8>, Vec<u8> > = image::GrayImage::new(512, 512);
-    // let mut img: image::ImageBuffer<image::Luma<u16>, Vec<u16> > = 
-    
-    let mut img: image::ImageBuffer<image::Luma<u8>, Vec<u8> > = 
-        image::GrayImage::new(2048, 2048);
-
-
-    let z = img.as_flat_samples_mut();
-
-    // let a: Arc<RefCell<image::ImageBuffer<image::Luma<u8>, Vec<u8> > > > = Arc::new(RefCell::new(img));
-    let mut a = Mutex::new(img.clone());
-
-    // let mut img = 
-    //     GreyImageHigh::new(128, 128);
-    
-        // image::ImageBuffer::new(128, 128);
-    // img.put_pixel(1, 1, image::Luma([13]));
-
-    // img.fractalize();
-
-    let sub = img.sub_image(0, 0, img.width(), img.height() / 7);
-    
-    // let aa = AtomicU16::new(5);
-
-    // aa.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-
-    // let mut img2: ImageBuffer<Luma<AtomicU16>, Vec<AtomicU16> > = ImageBuffer::new(512, 512);
-
-    a.fractalize();
-
-
-    // let _out = img.save("./test.png");
-
-    // let b = &*a.clone();
-    let _b = a.lock().unwrap().save("./test.png");
+    mutex_grid_test_b();
 }
 
