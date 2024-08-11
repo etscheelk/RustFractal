@@ -107,15 +107,24 @@ fn main() {
 
     // test();
 
-    let mut img = MutexGrid::<u8>::new(4096, 4096);
-    img.fractalize(1_000_000_000);
-    img.apply_all_in_parallel(4, 
-        |p|
-        (*p as f64).sqrt() as u8
-    );
+    // let mut img = MutexGrid::<u8>::new(4096, 4096);
+    // img.fractalize(1_000_000_000);
+    // img.apply_all_in_parallel(4, 
+    //     |p|
+    //     (*p as f64).sqrt() as u8
+    // );
 
-    let img: MyGreyImage<_> = img.into();
-    let _ = img.save("sqrtimg.png");
+    // let img: MyGreyImage<_> = img.into();
+    // let _ = img.save("sqrtimg.png");
+
+    let a = Arc::new(RefCell::new(vec![0; 2]));
+    let mut aa = a.as_ref().borrow_mut();
+    let mut aaa = a.as_ref().borrow_mut();
+
+    aa[0] = 1;
+    aaa[1] = 2;
+    
+    println!("{:?}", a);
 }
 
 fn test() {
