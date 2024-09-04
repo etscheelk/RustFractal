@@ -216,7 +216,7 @@ impl crate::fractal::Fractalize for MutexGridPar<u8>
 
                     for ii in 0..(num_points / num_threads)
                     {
-                        if ii % 100_000 == 0 { println!("{ii} in thread {i}"); }
+                        // if ii % 100_000 == 0 { println!("{ii} in thread {i}"); }
                         let this_rand = distr.sample(&mut rng);
 
                         (x, y) = 

@@ -115,10 +115,11 @@ fn main() {
     // a.push(&"hello there!");
     // println!("{:?}", a);
 
-    let mut img = MutexGridPar::<u8>::new(4096, 4096);
+    // let mut img = MutexGridPar::<u8>::new(4096, 4096);
+    let mut img = MutexGrid::<u8>::new(4096, 4096);
     img.fractalize(1_000_000_0);
-    
     let img : MyGreyImage<_> = img.into();
+    // let img : MyGreyImage<_> = img.into();
     let _ = img.save("test_par.png");
 
     // let mut img = MutexGrid::<u8>::new(4096, 4096);
