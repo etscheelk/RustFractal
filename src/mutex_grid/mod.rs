@@ -24,7 +24,7 @@ where
             grid: vec![P::default(); (width * height) as usize]
         }
     }
-
+    
     pub fn apply_all_in_parallel<F>(&mut self, threads: u16, mut f: F)
     where
         F: FnMut(&mut P) -> P + Send + Sync + Copy,
