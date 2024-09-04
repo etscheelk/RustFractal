@@ -1,11 +1,11 @@
-use std::{f64::consts::PI, io::Write, path::Path};
+use std::{f64::consts::PI, io::Write, ops::{Add, Deref, DerefMut}, path::Path, thread};
 
 use rand::prelude::*;
 
 pub struct MutexGrid<P>
 {
-    width: u32,
-    height: u32,
+    rows: u32,
+    cols: u32,
     grid: Vec<P>
 }
 
@@ -15,13 +15,13 @@ where
 {
     /// Create an all-black single-color image
     /// of dimensions width x height
-    pub fn new(width: u32, height: u32) -> Self
+    pub fn new(rows: u32, cols: u32) -> Self
     {
         MutexGrid
         {
-            width,
-            height,
-            grid: vec![P::default(); (width * height) as usize]
+            rows,
+            cols,
+            grid: vec![P::default(); (rows * cols) as usize]
         }
     }
     
@@ -58,14 +58,14 @@ where
         P: num_traits::CheckedAdd
     {
         let distr = 
-            rand::distributions::Uniform::new(0, self.width);
+            rand::distributions::Uniform::new(0, self.rows);
         let mut rng = rand::thread_rng();
         for _ in 0..1_000_000_000
         {
             let x = distr.sample(&mut rng);
             let y = distr.sample(&mut rng);
 
-            let a = self.grid.get_mut((y * self.width + x) as usize).unwrap();
+            let a = self.grid.get_mut((y * self.rows + x) as usize).unwrap();
 
             *a = match P::checked_add(a, &P::one())
             {
@@ -80,9 +80,10 @@ impl<T> crate::fractal::Fractalize for MutexGrid<T>
 where
     T: image::Primitive + num_traits::CheckedAdd,
 {
-    fn fractalize(&mut self, num_points: usize) -> () {
+    fn fractalize(&mut self, num_points: usize) -> () 
+    {
         let distr = 
-            rand::distributions::Uniform::new(0, self.width);
+            rand::distributions::Uniform::new(0, self.rows);
         let mut rng = rand::thread_rng();
 
         let mut x: f64 = 0.0;
@@ -133,10 +134,10 @@ where
 
             // add point to array
             // assumes square right now
-            let xx = (x / 2.0 + 0.5) * self.width as f64;
-            let yy = (y / 2.0 + 0.5) * self.height as f64;
+            let xx = (x / 2.0 + 0.5) * self.rows as f64;
+            let yy = (y / 2.0 + 0.5) * self.cols as f64;
 
-            if let Some(pixel) = self.grid.get_mut(yy as usize * self.width as usize + xx as usize)
+            if let Some(pixel) = self.grid.get_mut(yy as usize * self.rows as usize + xx as usize)
             {
                 *pixel = match pixel.checked_add(&T::one())
                 {
@@ -148,11 +149,158 @@ where
     }
 }
 
-struct MutexGridRefMut<'a, T: image::Primitive>
+pub struct MutexGridPar<P>(MutexGrid<P>);
+
+impl<P> Deref for MutexGridPar<P>
 {
-    // width: usize,
-    // height: usize, // assume 48x48 for now
-    grid: std::sync::Mutex<&'a mut [T]>
+    type Target = MutexGrid<P>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<P> DerefMut for MutexGridPar<P>
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<P> MutexGridPar<P>
+where
+    P: image::Primitive + Default
+{
+    /// Create an all-black single-color image
+    /// of dimensions width x height
+    pub fn new(rows: u32, cols: u32) -> Self
+    {
+        MutexGridPar(MutexGrid::new(rows, cols))
+    }
+}
+
+
+impl crate::fractal::Fractalize for MutexGridPar<u8>
+// where
+//     P: image::Primitive + num_traits::CheckedAdd + Add + Send,
+{
+    fn fractalize(&mut self, num_points: usize) -> () 
+    {
+        // Strategy: Create a sparse matrix and use that in each thread
+        // Upon thread join, add the matrices, convert 
+
+        let num_threads = 4;
+        let matrix_size = (self.rows as usize, self.cols as usize);
+
+        let mut handles = vec![];
+
+        for i in 0..num_threads
+        {
+            let handle = thread::spawn(
+                move ||
+                {
+                    println!("Hello fromm thread #{i}");
+                    ////////////////////////////////////////////////
+                    let mut local_matrix: sprs::CsMat<u8> = 
+                        sprs::CsMatBase::zero(matrix_size);
+                    
+                    // assumes square
+                    let distr = rand::distributions::Uniform::new(0, matrix_size.0);
+                    let mut rng = rand::thread_rng();
+
+                    let mut x: f64 = 0.0;
+                    let mut y: f64 = 0.5;
+
+                    let rot: f64 = 1.724643921305295;
+                    let theta_offset: f64 = 3.0466792337230033;
+
+                    for ii in 0..(num_points / num_threads)
+                    {
+                        if ii % 100_000 == 0 { println!("{ii} in thread {i}"); }
+                        let this_rand = distr.sample(&mut rng);
+
+                        (x, y) = 
+                        if this_rand & 1 == 1
+                        {
+                            (
+                                x * rot.cos() + y * rot.sin(),
+                                y * rot.cos() - x * rot.sin()
+                            )
+                        }
+                        else
+                        {
+                            let rad = x * 0.5 + 0.5;
+                            let theta = y * PI + theta_offset;
+                            (
+                                rad * theta.cos(),
+                                rad * theta.sin()
+                            )
+                        };
+
+                        let xx = (x / 2.0 + 0.5) * matrix_size.0 as f64;
+                        let yy = (y / 2.0 + 0.5) * matrix_size.1 as f64;
+
+                        // TODO: Checked add?
+                        match local_matrix.get_mut(xx as usize, yy as usize)
+                        {
+                            Some(value) => {
+                                if let Some(v) = value.checked_add(1)
+                                {
+                                    *value = v;
+                                }
+                            },
+                            None => {
+                                local_matrix.insert(xx as usize, yy as usize, 1);
+                            },
+                        }
+                    }
+
+                    local_matrix
+                    ////////////////////////////////////////////////
+                }
+            );
+            handles.push(handle);
+        }
+
+        let mut final_matrix: sprs::CsMat<u8> = 
+            sprs::CsMatBase::zero(matrix_size);
+        
+        for handle in handles
+        {
+            let local_matrix = handle.join().unwrap();
+
+            // final_matrix = final_matrix + local_matrix;
+            final_matrix = &final_matrix + &local_matrix;
+        }
+
+        // read sparse matrix data into self.grid
+        let indptr = final_matrix.indptr();
+        let indices = final_matrix.indices();
+        let data = final_matrix.data();
+
+        // let row = 1;
+        // let z = &indices[indptr.index(row)..indptr.index(row+1)];
+
+        for row in 0..(matrix_size.0)
+        {
+            let (ind_a, ind_b) = (indptr.index(row), indptr.index(row+1));
+            for (col, val) in indices[ind_a..ind_b].iter().zip(data[ind_a..ind_b].iter())
+            {
+                self.grid[row * matrix_size.1 as usize + col] = *val;
+            }
+        }
+    }
+}
+
+impl<P> Into<MyGreyImage<P>> for MutexGridPar<P>
+where
+    P: image::Primitive
+{ 
+    fn into(self) -> MyGreyImage<P> {
+        // from_raw fails if the buffer is not large enough.
+        // But we know the buffer will have the right size so it will not fail 
+        MyGreyImage::from_raw(self.rows, self.cols, self.grid.clone()).unwrap()
+    }
 }
 
 // impl<P> Into<image::ImageBuffer<P, Vec<P> > > for MutexGrid<P>
@@ -175,7 +323,7 @@ where
     fn into(self) -> MyGreyImage<P> {
         // from_raw fails if the buffer is not large enough.
         // But we know the buffer will have the right size so it will not fail 
-        MyGreyImage::from_raw(self.width, self.height, self.grid).unwrap()
+        MyGreyImage::from_raw(self.rows, self.cols, self.grid).unwrap()
     }
 }
 

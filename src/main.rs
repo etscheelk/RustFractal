@@ -2,7 +2,7 @@ use std::{cell::RefCell, sync::{atomic::AtomicU16, Arc, Mutex}, time::Instant};
 
 use image::{GenericImage, ImageBuffer, Luma};
 use serde::{Deserialize, Serialize};
-use RustFractal::{fractal::Fractalize, mutex_grid::{MutexGrid, MyGreyImage}};
+use RustFractal::{fractal::Fractalize, mutex_grid::{MutexGrid, MutexGridPar, MyGreyImage}};
 
 type GreyImageHigh = image::ImageBuffer<image::Luma<u16>, Vec<u16> >;
 
@@ -107,6 +107,20 @@ fn main() {
 
     // test();
 
+    // Must contain references (pointers) so the array 
+    // has elements of known size at compile time
+    // let mut a : Vec<&dyn std::fmt::Debug> = vec![];
+    // a.push(&5_i32);
+    // a.push(&1.0_f32);
+    // a.push(&"hello there!");
+    // println!("{:?}", a);
+
+    let mut img = MutexGridPar::<u8>::new(4096, 4096);
+    img.fractalize(1_000_000_0);
+    
+    let img : MyGreyImage<_> = img.into();
+    let _ = img.save("test_par.png");
+
     // let mut img = MutexGrid::<u8>::new(4096, 4096);
     // img.fractalize(1_000_000_000);
     // img.apply_all_in_parallel(4, 
@@ -117,25 +131,28 @@ fn main() {
     // let img: MyGreyImage<_> = img.into();
     // let _ = img.save("sqrtimg.png");
 
-    let a = Arc::new(RefCell::new(vec![0; 2]));
-    let mut aa = a.as_ref().borrow_mut();
-    let mut aaa = a.as_ref().borrow_mut();
+    // let a = Arc::new(RefCell::new(vec![0; 2]));
+    // let mut aa = a.as_ref().borrow_mut();
+    // let mut aaa = a.as_ref().borrow_mut();
 
-    aa[0] = 1;
-    aaa[1] = 2;
+    // aa[0] = 1;
+    // aaa[1] = 2;
     
-    println!("{:?}", a);
+    // println!("{:?}", a);
 }
 
 fn test() {
     let mut t = Table::<f64>::default();
-    t.name = "SerialMethod8192x8192".to_string();
     
-    const DIM: u32 = 8192;
+    const NAME: &str = "ParFirst";
+    const DIM: u32 = 4096;
     const START: usize = 1_000_000;
     const END: usize = 1_000_000_000;
     const NUM_PTS_TESTS: usize = 10;
     const NUM_REPS: usize = 5;
+    
+    // t.name = "SerialMethod8192x8192".to_string();
+    t.name = format!("{NAME}_{DIM}x{DIM}_{START}_to_{END}_in_{NUM_PTS_TESTS}_steps_{NUM_REPS}_reps_each");
     
     let mut cur_pts = START;
 
