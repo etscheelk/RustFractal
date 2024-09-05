@@ -1,11 +1,13 @@
+pub mod sprs_grid;
+
 use std::{f64::consts::PI, ops::{Deref, DerefMut}, thread};
 
 use rand::prelude::*;
 
 pub struct MyGrid<P>
 {
-    rows: u32,
-    cols: u32,
+    rows: usize,
+    cols: usize,
     grid: Vec<P>
 }
 
@@ -15,7 +17,7 @@ where
 {
     /// Create an all-black single-color image
     /// of dimensions width x height
-    pub fn new(rows: u32, cols: u32) -> Self
+    pub fn new(rows: usize, cols: usize) -> Self
     {
         MyGrid
         {
@@ -173,7 +175,7 @@ where
 {
     /// Create an all-black single-color image
     /// of dimensions width x height
-    pub fn new(rows: u32, cols: u32) -> Self
+    pub fn new(rows: usize, cols: usize) -> Self
     {
         MyGridPar(MyGrid::new(rows, cols))
     }
@@ -316,7 +318,7 @@ where
     fn into(self) -> MyGreyImage<P> {
         // from_raw fails if the buffer is not large enough.
         // But we know the buffer will have the right size so it will not fail 
-        MyGreyImage::from_raw(self.rows, self.cols, self.grid).unwrap()
+        MyGreyImage::from_raw(self.rows as u32, self.cols as u32, self.grid).unwrap()
     }
 }
 

@@ -1,11 +1,12 @@
 use std::time::Instant;
 
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 use RustFractal::{fractal::Fractalize, my_grid::{MyGrid, MyGridPar, MyGreyImage}};
 
 
 
-fn mutex_grid_fractal_c(dim: u32, num_points: usize) -> f64
+fn time_and_save(dim: usize, num_points: usize) -> f64
 {
     let start = Instant::now();
 
@@ -88,10 +89,13 @@ fn main() {
     // println!("{:?}", a);
 
     // let mut img = MutexGridPar::<u8>::new(4096, 4096);
-    // let mut img = MyGrid::<u8>::new(1024, 1024);
-    let mut img = MyGridPar::<u8>::new(1024, 1024);
+    let mut img = MyGrid::<u8>::new(1024, 1024);
+    // let mut img = MyGridPar::<u8>::new(1024, 1024);
+    // let mut img: sprs::CsMat<u8> = sprs::CsMatBase::zero((1024, 1024));
+    // let vec: sprs::CsVec<u8> = sprs::CsVecBase::zero();
     img.fractalize(1_000_000);
     
+    // let img: MyGrid<_> = img.into();
     let img : MyGreyImage<_> = img.into();
     let _ = img.save("test_par.png");
 
@@ -120,7 +124,7 @@ fn test() {
     let mut t = Table::<f64>::default();
     
     const NAME: &str = "ParFirst";
-    const DIM: u32 = 4096;
+    const DIM: usize = 4096;
     const START: usize = 1_000_000;
     const END: usize = 1_000_000_000;
     const NUM_PTS_TESTS: usize = 10;
@@ -149,7 +153,7 @@ fn test() {
 
         for _ in 0..NUM_REPS
         {
-            let time = mutex_grid_fractal_c(DIM, cur_pts);
+            let time = time_and_save(DIM, cur_pts);
             r.add_elem(time);
         }
     
@@ -186,5 +190,16 @@ mod test
 
         let img: MyGreyImage<_> = img.into();
         img.save("test/static_noise.png")
+    }
+
+    #[test]
+    fn sprs_grid_fractalize() -> Result<(), image::ImageError>
+    {
+        let mut s: sprs::CsMat<u8> = sprs::CsMatBase::zero((512, 512));
+        s.fractalize(1_000_000);
+
+        let s: MyGrid<u8> = s.into();
+        let s: MyGreyImage<u8> = s.into();
+        s.save("test/sprs_grid_fractalize.png")
     }
 }
