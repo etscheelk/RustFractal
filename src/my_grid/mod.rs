@@ -85,7 +85,7 @@ where
     fn fractalize(&mut self, num_points: usize) -> () 
     {
         let distr = 
-            rand::distributions::Uniform::new(0, self.rows);
+            rand::distributions::Uniform::new(0, usize::MAX);
         let mut rng = rand::thread_rng();
 
         let mut x: f64 = 0.0;
@@ -94,57 +94,46 @@ where
         let rot: f64 = 1.724643921305295;
         let theta_offset: f64 = 3.0466792337230033;
 
-        for _ in 0..num_points
+        
+
+        for _ in 0..(num_points / 64)
         {
             let this_rand = distr.sample(&mut rng);
 
-            // (x, y) = match this_rand & 1
-            // {
-            //     1 => (
-            //         x * rot.cos() + y * rot.sin(),
-            //         y * rot.cos() - x * rot.sin()
-            //     ),
-            //     _ => {
-            //         let rad = x * 0.5 + 0.5;
-            //         let theta = y * PI + theta_offset;
-            //         (
-            //             rad * theta.cos(),
-            //             rad * theta.sin()
-            //         )
-            //     }
-            // };
-
-            // Check whether these are the same. 
-            // I believe this case would be identical
-            (x, y) = 
-            if this_rand & 1 == 1
+            for i in 0..64_usize
             {
-                (
-                    x * rot.cos() + y * rot.sin(),
-                    y * rot.cos() - x * rot.sin()
-                )
-            }
-            else
-            {
-                let rad = x * 0.5 + 0.5;
-                let theta = y * PI + theta_offset;
-                (
-                    rad * theta.cos(),
-                    rad * theta.sin()
-                )
-            };
-
-            // add point to array
-            // assumes square right now
-            let xx = (x / 2.0 + 0.5) * self.rows as f64;
-            let yy = (y / 2.0 + 0.5) * self.cols as f64;
-
-            if let Some(pixel) = self.grid.get_mut(yy as usize * self.rows as usize + xx as usize)
-            {
-                *pixel = match pixel.checked_add(&T::one())
+                let r = this_rand & (1 << i);
+        
+                (x, y) = 
+                if r > 0
                 {
-                    Some(v) => v,
-                    None => *pixel
+                    (
+                        x * rot.cos() + y * rot.sin(),
+                        y * rot.cos() - x * rot.sin()
+                    )
+                }
+                else
+                {
+                    let rad = x * 0.5 + 0.5;
+                    let theta = y * PI + theta_offset;
+                    (
+                        rad * theta.cos(),
+                        rad * theta.sin()
+                    )
+                };
+    
+                // add point to array
+                // assumes square right now
+                let xx = (x / 2.0 + 0.5) * self.rows as f64;
+                let yy = (y / 2.0 + 0.5) * self.cols as f64;
+    
+                if let Some(pixel) = self.grid.get_mut(yy as usize * self.rows as usize + xx as usize)
+                {
+                    *pixel = match pixel.checked_add(&T::one())
+                    {
+                        Some(v) => v,
+                        None => *pixel
+                    }
                 }
             }
         }

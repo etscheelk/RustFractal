@@ -1,10 +1,7 @@
 use std::time::Instant;
 
-use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 use RustFractal::{fractal::Fractalize, my_grid::{MyGrid, MyGridPar, MyGreyImage}};
-
-
 
 fn time_and_save(dim: usize, num_points: usize) -> f64
 {
@@ -78,7 +75,7 @@ fn main() {
 
     println!("Hello, world!");
 
-    // test();
+    test();
 
     // Must contain references (pointers) so the array 
     // has elements of known size at compile time
@@ -89,15 +86,15 @@ fn main() {
     // println!("{:?}", a);
 
     // let mut img = MutexGridPar::<u8>::new(4096, 4096);
-    let mut img = MyGrid::<u8>::new(1024, 1024);
-    // let mut img = MyGridPar::<u8>::new(1024, 1024);
-    // let mut img: sprs::CsMat<u8> = sprs::CsMatBase::zero((1024, 1024));
-    // let vec: sprs::CsVec<u8> = sprs::CsVecBase::zero();
-    img.fractalize(1_000_000);
+    // let mut img = MyGrid::<u8>::new(1024, 1024);
+    // // let mut img = MyGridPar::<u8>::new(1024, 1024);
+    // // let mut img: sprs::CsMat<u8> = sprs::CsMatBase::zero((1024, 1024));
+    // // let vec: sprs::CsVec<u8> = sprs::CsVecBase::zero();
+    // img.fractalize(1_000_000);
     
-    // let img: MyGrid<_> = img.into();
-    let img : MyGreyImage<_> = img.into();
-    let _ = img.save("test_par.png");
+    // // let img: MyGrid<_> = img.into();
+    // let img : MyGreyImage<_> = img.into();
+    // let _ = img.save("test_par.png");
 
     // let mut img = MutexGrid::<u8>::new(4096, 4096);
     // img.fractalize(1_000_000_000);
@@ -123,7 +120,7 @@ fn main() {
 fn test() {
     let mut t = Table::<f64>::default();
     
-    const NAME: &str = "ParFirst";
+    const NAME: &str = "TrivialSerial";
     const DIM: usize = 4096;
     const START: usize = 1_000_000;
     const END: usize = 1_000_000_000;
