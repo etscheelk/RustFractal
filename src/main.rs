@@ -1,46 +1,16 @@
-use std::{cell::RefCell, sync::{atomic::AtomicU16, Arc, Mutex}, time::Instant};
+use std::time::Instant;
 
-use image::{GenericImage, ImageBuffer, Luma};
 use serde::{Deserialize, Serialize};
-use RustFractal::{fractal::Fractalize, mutex_grid::{MutexGrid, MutexGridPar, MyGreyImage}};
-
-type GreyImageHigh = image::ImageBuffer<image::Luma<u16>, Vec<u16> >;
+use RustFractal::{fractal::Fractalize, my_grid::{MyGrid, MyGridPar, MyGreyImage}};
 
 
-
-struct w(AtomicU16);
-
-fn test_a()
-{
-    let mut img: image::ImageBuffer<image::Luma<u8>, Vec<u8> > = 
-        image::GrayImage::new(2048, 2048);
-
-    img.fractalize(10_000_000);
-
-    let _ = img.save("test_a.png");
-}
-
-fn mutex_grid_static_b()
-{
-    let mut img = 
-        MutexGrid::<u8>::new(2048, 2048);
-    
-    img.r#static();
-
-    // img.apply_in_parallel(4, |p| *p * *p);
-    // img.apply_in_parallel(4, |p| (*p).pow(8));
-
-
-    let img: MyGreyImage<_> = img.into();
-    let _ = img.save("mutex_grid_rand.png");
-}
 
 fn mutex_grid_fractal_c(dim: u32, num_points: usize) -> f64
 {
     let start = Instant::now();
 
     let mut img = 
-        MutexGrid::<u8>::new(dim, dim);
+        MyGrid::<u8>::new(dim, dim);
 
     img.fractalize(num_points);
 
@@ -103,6 +73,8 @@ where
 // }
 
 fn main() {
+    let start = Instant::now();
+
     println!("Hello, world!");
 
     // test();
@@ -116,10 +88,11 @@ fn main() {
     // println!("{:?}", a);
 
     // let mut img = MutexGridPar::<u8>::new(4096, 4096);
-    let mut img = MutexGrid::<u8>::new(4096, 4096);
-    img.fractalize(1_000_000_0);
+    // let mut img = MyGrid::<u8>::new(1024, 1024);
+    let mut img = MyGridPar::<u8>::new(1024, 1024);
+    img.fractalize(1_000_000);
+    
     let img : MyGreyImage<_> = img.into();
-    // let img : MyGreyImage<_> = img.into();
     let _ = img.save("test_par.png");
 
     // let mut img = MutexGrid::<u8>::new(4096, 4096);
@@ -140,6 +113,7 @@ fn main() {
     // aaa[1] = 2;
     
     // println!("{:?}", a);
+    println!("Elapsed time: {}", start.elapsed().as_secs_f64());
 }
 
 fn test() {
@@ -188,3 +162,29 @@ fn test() {
     println!("{:?}", postcard::to_stdvec(&t).unwrap());
 }
 
+#[cfg(test)]
+mod test
+{
+    use RustFractal::{fractal::Fractalize, my_grid::{MyGrid, MyGreyImage}};
+
+    #[test]
+    fn test_basic() -> Result<(), image::ImageError>
+    {
+        let mut img = MyGrid::<u8>::new(512, 512);
+        img.fractalize(1_000_000);
+        let img: MyGreyImage<_> = img.into();
+        img.save("test/test_basic.png")
+    }
+
+    #[test]
+    fn mutex_grid_random_static() -> Result<(), image::ImageError>
+    {
+        let mut img = 
+            MyGrid::<u8>::new(256, 256);
+        
+        img.r#static();
+
+        let img: MyGreyImage<_> = img.into();
+        img.save("test/static_noise.png")
+    }
+}

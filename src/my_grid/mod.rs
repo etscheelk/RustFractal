@@ -1,15 +1,15 @@
-use std::{f64::consts::PI, io::Write, ops::{Add, Deref, DerefMut}, path::Path, thread};
+use std::{f64::consts::PI, ops::{Deref, DerefMut}, thread};
 
 use rand::prelude::*;
 
-pub struct MutexGrid<P>
+pub struct MyGrid<P>
 {
     rows: u32,
     cols: u32,
     grid: Vec<P>
 }
 
-impl<P> MutexGrid<P>
+impl<P> MyGrid<P>
 where
     P: image::Primitive + Default
 {
@@ -17,7 +17,7 @@ where
     /// of dimensions width x height
     pub fn new(rows: u32, cols: u32) -> Self
     {
-        MutexGrid
+        MyGrid
         {
             rows,
             cols,
@@ -60,7 +60,7 @@ where
         let distr = 
             rand::distributions::Uniform::new(0, self.rows);
         let mut rng = rand::thread_rng();
-        for _ in 0..1_000_000_000
+        for _ in 0..1_000_000
         {
             let x = distr.sample(&mut rng);
             let y = distr.sample(&mut rng);
@@ -76,7 +76,7 @@ where
     }
 }
 
-impl<T> crate::fractal::Fractalize for MutexGrid<T>
+impl<T> crate::fractal::Fractalize for MyGrid<T>
 where
     T: image::Primitive + num_traits::CheckedAdd,
 {
@@ -149,25 +149,25 @@ where
     }
 }
 
-pub struct MutexGridPar<P>(MutexGrid<P>);
+pub struct MyGridPar<P>(MyGrid<P>);
 
-impl<P> Deref for MutexGridPar<P>
+impl<P> Deref for MyGridPar<P>
 {
-    type Target = MutexGrid<P>;
+    type Target = MyGrid<P>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<P> DerefMut for MutexGridPar<P>
+impl<P> DerefMut for MyGridPar<P>
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<P> MutexGridPar<P>
+impl<P> MyGridPar<P>
 where
     P: image::Primitive + Default
 {
@@ -175,12 +175,27 @@ where
     /// of dimensions width x height
     pub fn new(rows: u32, cols: u32) -> Self
     {
-        MutexGridPar(MutexGrid::new(rows, cols))
+        MyGridPar(MyGrid::new(rows, cols))
     }
 }
 
+impl<P> From<MyGridPar<P>> for MyGrid<P>
+{
+    fn from(value: MyGridPar<P>) -> Self {
+        value.0
+    }
+}
 
-impl crate::fractal::Fractalize for MutexGridPar<u8>
+impl<P> Into<MyGreyImage<P>> for MyGridPar<P>
+where
+    P: image::Primitive
+{
+    fn into(self) -> MyGreyImage<P> {
+        self.0.into()
+    }
+}
+
+impl crate::fractal::Fractalize for MyGridPar<u8>
 // where
 //     P: image::Primitive + num_traits::CheckedAdd + Add + Send,
 {
@@ -194,12 +209,11 @@ impl crate::fractal::Fractalize for MutexGridPar<u8>
 
         let mut handles = vec![];
 
-        for i in 0..num_threads
+        for _ in 0..num_threads
         {
             let handle = thread::spawn(
                 move ||
                 {
-                    println!("Hello fromm thread #{i}");
                     ////////////////////////////////////////////////
                     let mut local_matrix: sprs::CsMat<u8> = 
                         sprs::CsMatBase::zero(matrix_size);
@@ -214,7 +228,7 @@ impl crate::fractal::Fractalize for MutexGridPar<u8>
                     let rot: f64 = 1.724643921305295;
                     let theta_offset: f64 = 3.0466792337230033;
 
-                    for ii in 0..(num_points / num_threads)
+                    for _ in 0..(num_points / num_threads)
                     {
                         // if ii % 100_000 == 0 { println!("{ii} in thread {i}"); }
                         let this_rand = distr.sample(&mut rng);
@@ -292,31 +306,10 @@ impl crate::fractal::Fractalize for MutexGridPar<u8>
     }
 }
 
-impl<P> Into<MyGreyImage<P>> for MutexGridPar<P>
-where
-    P: image::Primitive
-{ 
-    fn into(self) -> MyGreyImage<P> {
-        // from_raw fails if the buffer is not large enough.
-        // But we know the buffer will have the right size so it will not fail 
-        MyGreyImage::from_raw(self.rows, self.cols, self.grid.clone()).unwrap()
-    }
-}
-
-// impl<P> Into<image::ImageBuffer<P, Vec<P> > > for MutexGrid<P>
-// where
-//     P: image::Pixel<Subpixel: image::Primitive>
-// {
-//     fn into(self) -> image::ImageBuffer<P, Vec<P> > {
-//         let a = (&*self.grid).to_vec();
-//         image::ImageBuffer::from_raw(self.width as u32, self.height as u32, a).unwrap()
-//     }
-// }
-
 pub type MyGreyImage<P> = image::ImageBuffer<image::Luma<P>, Vec<P>>;
 
 /// Conversion to a grey image
-impl<P> Into<MyGreyImage<P>> for MutexGrid<P>
+impl<P> Into<MyGreyImage<P>> for MyGrid<P>
 where
     P: image::Primitive
 { 
@@ -327,17 +320,8 @@ where
     }
 }
 
-// impl<P> Into<MyGreyImage<P>> for &MutexGrid<P>
-// where
-//     P: image::Primitive
-// {
-//     fn into(self) -> MyGreyImage<P> {
-//         MyGreyImage::from_raw(self.width, self.height, self.grid.clone()).unwrap()
-//     }
-// }
 
-
-
+#[cfg(test)]
 mod test
 {
     #[ignore = "Don't want this to run every time"]
@@ -345,7 +329,7 @@ mod test
     fn main()
     {
         use crate::fractal::Fractalize;
-        let mut img = super::MutexGrid::<u8>::new(1024, 1024);
+        let mut img = super::MyGrid::<u8>::new(1024, 1024);
         img.fractalize(10_000_000);
 
         let img: super::MyGreyImage<_> = img.into();
@@ -369,21 +353,21 @@ mod test
     #[test]
     fn image_send_sync()
     {
-        let m = super::MutexGrid::<u16>::new(48, 48);
+        let m = super::MyGrid::<u16>::new(48, 48);
 
-        let v: &dyn Send = &m;
-        let v: &dyn Sync = &m;
+        let _v: &dyn Send = &m;
+        let _v: &dyn Sync = &m;
 
         let img = image::GrayImage::new(128, 128);
 
-        let v: &dyn Send = &img;
-        let v: &dyn Sync = &img;
+        let _v: &dyn Send = &img;
+        let _v: &dyn Sync = &img;
     }
 
     #[test]
     fn image_buffer_from_arc_buf()
     {
-        use crate::mutex_grid::{MutexGrid, MyGreyImage};
+        use crate::my_grid::{MyGrid, MyGreyImage};
 
         let img = 
             image::ImageBuffer::<image::Luma<u16>, std::sync::Arc<_> >::from_raw(
@@ -393,7 +377,7 @@ mod test
             );
         assert_ne!(img, None);
 
-        let img: MutexGrid<u16> = MutexGrid::<u16>::new(128, 128);
-        let img: MyGreyImage<u16> = img.into();
+        let img: MyGrid<u16> = MyGrid::<u16>::new(128, 128);
+        let _img: MyGreyImage<u16> = img.into();
     }
 }
