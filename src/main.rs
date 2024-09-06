@@ -77,15 +77,22 @@ fn main() {
 
     // test();
 
-    // let mut img = MyGrid::<u8>::new(4096, 4096);
-    // img.fractalize(1_000_000_000);
-    // let img: MyGreyImage<u8> = img.into();
-    // let _ = img.save("improved_rand.png");
+    let mut img = MyGrid::<u8>::new(4096, 4096);
+    println!("time to create grid: {} seconds", start.elapsed().as_secs_f64());
+    let start = Instant::now();
+    img.fractalize(1_000_000_00);
+    println!("Time to fractalize: {} seconds", start.elapsed().as_secs_f64());
+    let start = Instant::now();
+    let img: MyGreyImage<u8> = img.into();
+    println!("time to into MyGreyImage: {} seconds", start.elapsed().as_secs_f64());
+    let start = Instant::now();
+    let _ = img.save("improved_rand.png");
+    println!("time to save png: {} seconds", start.elapsed().as_secs_f64());
 
-    let mut v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    // let mut v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-    let slice = v.as_mut_slice();
-    slice.chunks_mut(5).enumerate().for_each(|a| { println!("i: {}, {:?}", a.0, a.1) });
+    // let slice = v.as_mut_slice();
+    // slice.chunks_mut(5).enumerate().for_each(|a| { println!("i: {}, {:?}", a.0, a.1) });
     
 
     // Must contain references (pointers) so the array 
@@ -125,7 +132,7 @@ fn main() {
     // aaa[1] = 2;
     
     // println!("{:?}", a);
-    println!("Elapsed time: {}", start.elapsed().as_secs_f64());
+    // println!("Elapsed time: {}", start.elapsed().as_secs_f64());
 }
 
 fn test() {

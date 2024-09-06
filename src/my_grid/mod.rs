@@ -1,6 +1,6 @@
 pub mod sprs_grid;
 
-use std::{f64::consts::PI, ops::{Deref, DerefMut}, thread};
+use std::{f64::consts::PI, ops::{Deref, DerefMut, Index, IndexMut}, thread};
 
 use rand::prelude::*;
 
@@ -80,7 +80,7 @@ where
 
 impl<T> crate::fractal::Fractalize for MyGrid<T>
 where
-    T: image::Primitive + num_traits::CheckedAdd,
+    T: image::Primitive + num_traits::CheckedAdd + Send,
 {
     fn fractalize(&mut self, num_points: usize) -> () 
     {
@@ -88,21 +88,20 @@ where
             rand::distributions::Uniform::new(0, usize::MAX);
         let rands: Vec<usize> = rand::thread_rng().sample_iter(&distr).take(num_points / 64).collect();
 
-        let mut x: f64 = 0.0;
+        let mut x: f64 = 0.5;
         let mut y: f64 = 0.5;
         
         let rot: f64 = 1.724643921305295;
         let theta_offset: f64 = 3.0466792337230033;
 
-        let slice = self.grid.as_mut_slice();
+        let rows = self.rows;
+        let cols = self.cols;
 
         let transform = 
-        |r: usize, i: usize, s: &mut [T]| -> () 
+        |x: f64, y: f64, s: bool| -> (f64, f64)
         {
-            let this_r = r & (1 << i);
-        
-            (x, y) = 
-            if this_r > 0
+            let (x, y) = 
+            if s
             {
                 (
                     x * rot.cos() + y * rot.sin(),
@@ -119,79 +118,84 @@ where
                 )
             };
 
-            // add point to array
-            // assumes square right now
-            let xx = (x / 2.0 + 0.5) * self.rows as f64;
-            let yy = (y / 2.0 + 0.5) * self.cols as f64;
-
-            if let Some(pixel) = s.get_mut(yy as usize * self.rows as usize + xx as usize)
-            {
-                *pixel = match pixel.checked_add(&T::one())
-                {
-                    Some(v) => v,
-                    None => *pixel
-                }
-            }
+            (x, y)
         };
 
+        let xy_to_grid_loc =
+        |x, y| -> (usize, usize)
+        {
+            let r = (y / 2.0 + 0.5) * rows as f64;
+            let c = (x / 2.0 + 0.5) * cols as f64;
+
+            return (r as usize, c as usize);
+        };
+
+        let flat_index =
+        |r: usize, c: usize|
+        {
+            r * cols + c
+        };
+        
+        // assumes right now the number of rows is divisible by four
+        let chunk_exact_size = self.rows * self.cols / 3;
+        let slice = self.grid.as_mut_slice();
         std::thread::scope(
         |scope|
         {
             // chunk by some number of whole rows
             slice
-            .chunks_mut(num_points / 4)
+            .chunks_exact_mut(chunk_exact_size)
             .enumerate()
             .for_each(
-            |(i, sub_slice)|
+            |(en, sub_slice)|
             {
+                let rrr = &rands;
                 scope.spawn(
                 move ||
                 {
-                    
+                    let valid_indices = (en * chunk_exact_size)..((en+1) * chunk_exact_size);
+                    for r in rrr
+                    {
+                        for i in 0..64_usize
+                        {
+                            let b: bool = (r & (1 << i)) != 0;
+                            (x, y) = transform(x, y, b);
+                            let (r, c) = xy_to_grid_loc(x, y);
+
+                            let index = flat_index(r, c);
+
+                            if !valid_indices.contains(&index) { continue }
+
+                            let translated_index = index - valid_indices.start;
+
+                            sub_slice[translated_index] = sub_slice[translated_index] + T::one();
+                        }
+                    }
                 });
             })
         });
 
 
-        for r in rands
-        {
-            for i in 0..64_usize
-            {
-                let this_r = r & (1 << i);
+        // for r in rands
+        // {
+        //     for i in 0..64_usize
+        //     {
+        //         let this_r = r & (1 << i);
         
-                (x, y) = 
-                if this_r > 0
-                {
-                    (
-                        x * rot.cos() + y * rot.sin(),
-                        y * rot.cos() - x * rot.sin()
-                    )
-                }
-                else
-                {
-                    let rad = x * 0.5 + 0.5;
-                    let theta = y * PI + theta_offset;
-                    (
-                        rad * theta.cos(),
-                        rad * theta.sin()
-                    )
-                };
+        //         (x, y) = transform(x, y, this_r != 0);
     
-                // add point to array
-                // assumes square right now
-                let xx = (x / 2.0 + 0.5) * self.rows as f64;
-                let yy = (y / 2.0 + 0.5) * self.cols as f64;
+        //         let (r, c) = xy_to_grid_loc(x, y);
     
-                if let Some(pixel) = self.grid.get_mut(yy as usize * self.rows as usize + xx as usize)
-                {
-                    *pixel = match pixel.checked_add(&T::one())
-                    {
-                        Some(v) => v,
-                        None => *pixel
-                    }
-                }
-            }
-        }
+        //         if let Some(pixel) = self.grid.get_mut(flat_index(r, c))
+        //         {
+        //             *pixel = match pixel.checked_add(&T::one())
+        //             {
+        //                 Some(v) => v,
+        //                 None => *pixel
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
 
