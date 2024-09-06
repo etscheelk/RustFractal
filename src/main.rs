@@ -75,7 +75,18 @@ fn main() {
 
     println!("Hello, world!");
 
-    test();
+    // test();
+
+    // let mut img = MyGrid::<u8>::new(4096, 4096);
+    // img.fractalize(1_000_000_000);
+    // let img: MyGreyImage<u8> = img.into();
+    // let _ = img.save("improved_rand.png");
+
+    let mut v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+    let slice = v.as_mut_slice();
+    slice.chunks_mut(5).enumerate().for_each(|a| { println!("i: {}, {:?}", a.0, a.1) });
+    
 
     // Must contain references (pointers) so the array 
     // has elements of known size at compile time

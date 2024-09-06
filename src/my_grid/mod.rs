@@ -86,7 +86,7 @@ where
     {
         let distr = 
             rand::distributions::Uniform::new(0, usize::MAX);
-        let mut rng = rand::thread_rng();
+        let rands: Vec<usize> = rand::thread_rng().sample_iter(&distr).take(num_points / 64).collect();
 
         let mut x: f64 = 0.0;
         let mut y: f64 = 0.5;
@@ -94,18 +94,73 @@ where
         let rot: f64 = 1.724643921305295;
         let theta_offset: f64 = 3.0466792337230033;
 
-        
+        let slice = self.grid.as_mut_slice();
 
-        for _ in 0..(num_points / 64)
+        let transform = 
+        |r: usize, i: usize, s: &mut [T]| -> () 
         {
-            let this_rand = distr.sample(&mut rng);
+            let this_r = r & (1 << i);
+        
+            (x, y) = 
+            if this_r > 0
+            {
+                (
+                    x * rot.cos() + y * rot.sin(),
+                    y * rot.cos() - x * rot.sin()
+                )
+            }
+            else
+            {
+                let rad = x * 0.5 + 0.5;
+                let theta = y * PI + theta_offset;
+                (
+                    rad * theta.cos(),
+                    rad * theta.sin()
+                )
+            };
 
+            // add point to array
+            // assumes square right now
+            let xx = (x / 2.0 + 0.5) * self.rows as f64;
+            let yy = (y / 2.0 + 0.5) * self.cols as f64;
+
+            if let Some(pixel) = s.get_mut(yy as usize * self.rows as usize + xx as usize)
+            {
+                *pixel = match pixel.checked_add(&T::one())
+                {
+                    Some(v) => v,
+                    None => *pixel
+                }
+            }
+        };
+
+        std::thread::scope(
+        |scope|
+        {
+            // chunk by some number of whole rows
+            slice
+            .chunks_mut(num_points / 4)
+            .enumerate()
+            .for_each(
+            |(i, sub_slice)|
+            {
+                scope.spawn(
+                move ||
+                {
+                    
+                });
+            })
+        });
+
+
+        for r in rands
+        {
             for i in 0..64_usize
             {
-                let r = this_rand & (1 << i);
+                let this_r = r & (1 << i);
         
                 (x, y) = 
-                if r > 0
+                if this_r > 0
                 {
                     (
                         x * rot.cos() + y * rot.sin(),
