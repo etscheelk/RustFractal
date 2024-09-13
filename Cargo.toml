@@ -13,4 +13,6 @@ serde = { version = "1.0.209", features = ["derive"] }
 sprs = { version = "0.11.0", features = ["serde"] }
 
 [profile.release]
-debug = true
+# debug = true
+# lto = true
+# codegen-units = 1

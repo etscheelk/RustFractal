@@ -137,65 +137,65 @@ where
         };
         
         // assumes right now the number of rows is divisible by four
-        let chunk_exact_size = self.rows * self.cols / 3;
-        let slice = self.grid.as_mut_slice();
-        std::thread::scope(
-        |scope|
-        {
-            // chunk by some number of whole rows
-            slice
-            .chunks_exact_mut(chunk_exact_size)
-            .enumerate()
-            .for_each(
-            |(en, sub_slice)|
-            {
-                let rrr = &rands;
-                scope.spawn(
-                move ||
-                {
-                    let valid_indices = (en * chunk_exact_size)..((en+1) * chunk_exact_size);
-                    for r in rrr
-                    {
-                        for i in 0..64_usize
-                        {
-                            let b: bool = (r & (1 << i)) != 0;
-                            (x, y) = transform(x, y, b);
-                            let (r, c) = xy_to_grid_loc(x, y);
-
-                            let index = flat_index(r, c);
-
-                            if !valid_indices.contains(&index) { continue }
-
-                            let translated_index = index - valid_indices.start;
-
-                            sub_slice[translated_index] = sub_slice[translated_index] + T::one();
-                        }
-                    }
-                });
-            })
-        });
-
-
-        // for r in rands
+        // let chunk_exact_size = self.rows * self.cols / 3;
+        // let slice = self.grid.as_mut_slice();
+        // std::thread::scope(
+        // |scope|
         // {
-        //     for i in 0..64_usize
+        //     // chunk by some number of whole rows
+        //     slice
+        //     .chunks_exact_mut(chunk_exact_size)
+        //     .enumerate()
+        //     .for_each(
+        //     |(en, sub_slice)|
         //     {
-        //         let this_r = r & (1 << i);
-        
-        //         (x, y) = transform(x, y, this_r != 0);
-    
-        //         let (r, c) = xy_to_grid_loc(x, y);
-    
-        //         if let Some(pixel) = self.grid.get_mut(flat_index(r, c))
+        //         let rrr = &rands;
+        //         scope.spawn(
+        //         move ||
         //         {
-        //             *pixel = match pixel.checked_add(&T::one())
+        //             let valid_indices = (en * chunk_exact_size)..((en+1) * chunk_exact_size);
+        //             for r in rrr
         //             {
-        //                 Some(v) => v,
-        //                 None => *pixel
+        //                 for i in 0..64_usize
+        //                 {
+        //                     let b: bool = (r & (1 << i)) != 0;
+        //                     (x, y) = transform(x, y, b);
+        //                     let (r, c) = xy_to_grid_loc(x, y);
+
+        //                     let index = flat_index(r, c);
+
+        //                     if !valid_indices.contains(&index) { continue }
+
+        //                     let translated_index = index - valid_indices.start;
+
+        //                     sub_slice[translated_index] = sub_slice[translated_index] + T::one();
+        //                 }
         //             }
-        //         }
-        //     }
-        // }
+        //         });
+        //     })
+        // });
+
+
+        for r in rands
+        {
+            for i in 0..64_usize
+            {
+                let this_r = r & (1 << i);
+        
+                (x, y) = transform(x, y, this_r != 0);
+    
+                let (r, c) = xy_to_grid_loc(x, y);
+    
+                if let Some(pixel) = self.grid.get_mut(flat_index(r, c))
+                {
+                    *pixel = match pixel.checked_add(&T::one())
+                    {
+                        Some(v) => v,
+                        None => *pixel
+                    }
+                }
+            }
+        }
     }
 }
 
