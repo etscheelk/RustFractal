@@ -80,7 +80,7 @@ fn main() {
     let mut img = MyGrid::<u8>::new(4096, 4096);
     println!("time to create grid: {} seconds", start.elapsed().as_secs_f64());
     let start = Instant::now();
-    img.fractalize(1_000_000);
+    img.fractalize(1_000_000_000);
     println!("Time to fractalize: {} seconds", start.elapsed().as_secs_f64());
     let start = Instant::now();
     let img: MyGreyImage<u8> = img.into();
