@@ -1,6 +1,6 @@
 pub mod sprs_grid;
 
-use std::{f64::consts::PI, ops::{Deref, DerefMut, Index, IndexMut}, thread};
+use std::{f64::consts::PI, ops::{Deref, DerefMut}, thread};
 
 use rand::prelude::*;
 
@@ -98,7 +98,7 @@ where
         let cols = self.cols;
 
         let transform = 
-        |x: f64, y: f64, s: bool| -> (f64, f64)
+        move |x: f64, y: f64, s: bool| -> (f64, f64)
         {
             let (x, y) = 
             if s
@@ -122,7 +122,7 @@ where
         };
 
         let xy_to_grid_loc =
-        |x, y| -> (usize, usize)
+        move |x, y| -> (usize, usize)
         {
             let r = (y / 2.0 + 0.5) * rows as f64;
             let c = (x / 2.0 + 0.5) * cols as f64;
@@ -135,6 +135,84 @@ where
         {
             r * cols + c
         };
+
+        let (sx, rx) = std::sync::mpsc::channel::<(usize, usize)>();
+        // let handles = Vec::new();
+
+        let num_threads = 4;
+
+        let slice = rands.as_slice();
+        let chunk_size_exact = rands.len() / num_threads;
+        std::thread::scope(
+        |scope|
+        {
+            slice
+            .chunks_exact(chunk_size_exact)
+            .enumerate()
+            .for_each(
+            |(i, sub_slice)|
+            {
+                let sxi = sx.clone();
+                scope.spawn(
+                move ||
+                {
+                    let angle = 2.0 * PI / (num_threads as f64) * (i as f64);
+                    let (mut x, mut y) = (0.5 * angle.cos(), 0.5 * angle.sin());
+                    for this_rand in sub_slice
+                    {
+                        for i in 0..64
+                        {
+                            let this_bool: bool = (this_rand & (1 << i)) != 0;
+                            
+                            (x, y) = transform(x, y, this_bool);
+                            let (r, c) = xy_to_grid_loc(x, y);
+                            let _ = sxi.send((r, c));
+                            println!("Sending...");
+                        }
+                    }
+                });
+            })
+        });
+        drop(sx);
+
+
+        // for i in 0..4
+        // {
+        //     let angle = 2.0 * PI / 4_f64 * i as f64;
+        //     // let (mut x, mut y) = 0.5 * (2.0 * PI / 4 as f64)
+        //     let (mut x, mut y) = (0.5 * angle.cos(), 0.5 * angle.sin());
+        
+
+        //     let sxi = sx.clone();
+        //     let handle = std::thread::spawn(
+        //     move ||
+        //     {
+        //         for _ in 0..(num_points/4)
+        //         {
+        //             (x, y) = transform(x, y, false);
+        //             let (r, c) = xy_to_grid_loc(x, y);
+        //             let _ = sxi.send((r, c));
+        //         }
+        //         drop(sxi);
+        //     });
+        // }
+        // drop(sx);
+
+        // let mut i = 0;
+        while let Ok((r, c)) = rx.recv()
+        {
+            println!("\tReceiving...");
+            // println!("{i}");
+            // i += 1;
+            if let Some(pixel) = self.grid.get_mut(flat_index(r, c))
+            {
+                *pixel = match pixel.checked_add(&T::one())
+                {
+                    Some(v) => v,
+                    None => *pixel
+                }
+            }
+        }
         
         // assumes right now the number of rows is divisible by four
         // let chunk_exact_size = self.rows * self.cols / 3;
@@ -176,26 +254,26 @@ where
         // });
 
 
-        for r in rands
-        {
-            for i in 0..64_usize
-            {
-                let this_r = r & (1 << i);
+        // for r in rands
+        // {
+        //     for i in 0..64_usize
+        //     {
+        //         let this_r = r & (1 << i);
         
-                (x, y) = transform(x, y, this_r != 0);
+        //         (x, y) = transform(x, y, this_r != 0);
     
-                let (r, c) = xy_to_grid_loc(x, y);
+        //         let (r, c) = xy_to_grid_loc(x, y);
     
-                if let Some(pixel) = self.grid.get_mut(flat_index(r, c))
-                {
-                    *pixel = match pixel.checked_add(&T::one())
-                    {
-                        Some(v) => v,
-                        None => *pixel
-                    }
-                }
-            }
-        }
+        //         if let Some(pixel) = self.grid.get_mut(flat_index(r, c))
+        //         {
+        //             *pixel = match pixel.checked_add(&T::one())
+        //             {
+        //                 Some(v) => v,
+        //                 None => *pixel
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
 
