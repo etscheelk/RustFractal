@@ -1,0 +1,13 @@
+Hello, world!
+log diff: 0.3
+mult: 1.9952623149688795
+points: 1000000
+points: 1995263
+points: 3981074
+points: 7943287
+points: 15848942
+points: 31622797
+points: 63095776
+points: 125892625
+points: 251188811
+points: 501187569

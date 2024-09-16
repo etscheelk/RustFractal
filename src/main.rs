@@ -1,46 +1,14 @@
-use std::{cell::RefCell, sync::{atomic::AtomicU16, Arc, Mutex}, time::Instant};
+use std::time::Instant;
 
-use image::{GenericImage, ImageBuffer, Luma};
 use serde::{Deserialize, Serialize};
-use RustFractal::{fractal::Fractalize, mutex_grid::{MutexGrid, MyGreyImage}};
+use RustFractal::{fractal::Fractalize, my_grid::{MyGrid, MyGridPar, MyGreyImage}};
 
-type GreyImageHigh = image::ImageBuffer<image::Luma<u16>, Vec<u16> >;
-
-
-
-struct w(AtomicU16);
-
-fn test_a()
-{
-    let mut img: image::ImageBuffer<image::Luma<u8>, Vec<u8> > = 
-        image::GrayImage::new(2048, 2048);
-
-    img.fractalize(10_000_000);
-
-    let _ = img.save("test_a.png");
-}
-
-fn mutex_grid_static_b()
-{
-    let mut img = 
-        MutexGrid::<u8>::new(2048, 2048);
-    
-    img.r#static();
-
-    // img.apply_in_parallel(4, |p| *p * *p);
-    // img.apply_in_parallel(4, |p| (*p).pow(8));
-
-
-    let img: MyGreyImage<_> = img.into();
-    let _ = img.save("mutex_grid_rand.png");
-}
-
-fn mutex_grid_fractal_c(dim: u32, num_points: usize) -> f64
+fn time_and_save(dim: usize, num_points: usize) -> f64
 {
     let start = Instant::now();
 
     let mut img = 
-        MutexGrid::<u8>::new(dim, dim);
+        MyGrid::<u8>::new(dim, dim);
 
     img.fractalize(num_points);
 
@@ -103,9 +71,48 @@ where
 // }
 
 fn main() {
+    let start = Instant::now();
+
     println!("Hello, world!");
 
     // test();
+
+    let mut img = MyGrid::<u8>::new(4096, 4096);
+    println!("time to create grid: {} seconds", start.elapsed().as_secs_f64());
+    let start = Instant::now();
+    img.fractalize(1_000_000_000);
+    println!("Time to fractalize: {} seconds", start.elapsed().as_secs_f64());
+    let start = Instant::now();
+    let img: MyGreyImage<u8> = img.into();
+    println!("time to into MyGreyImage: {} seconds", start.elapsed().as_secs_f64());
+    let start = Instant::now();
+    let _ = img.save("improved_rand.png");
+    println!("time to save png: {} seconds", start.elapsed().as_secs_f64());
+
+    // let mut v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+    // let slice = v.as_mut_slice();
+    // slice.chunks_mut(5).enumerate().for_each(|a| { println!("i: {}, {:?}", a.0, a.1) });
+    
+
+    // Must contain references (pointers) so the array 
+    // has elements of known size at compile time
+    // let mut a : Vec<&dyn std::fmt::Debug> = vec![];
+    // a.push(&5_i32);
+    // a.push(&1.0_f32);
+    // a.push(&"hello there!");
+    // println!("{:?}", a);
+
+    // let mut img = MutexGridPar::<u8>::new(4096, 4096);
+    // let mut img = MyGrid::<u8>::new(1024, 1024);
+    // // let mut img = MyGridPar::<u8>::new(1024, 1024);
+    // // let mut img: sprs::CsMat<u8> = sprs::CsMatBase::zero((1024, 1024));
+    // // let vec: sprs::CsVec<u8> = sprs::CsVecBase::zero();
+    // img.fractalize(1_000_000);
+    
+    // // let img: MyGrid<_> = img.into();
+    // let img : MyGreyImage<_> = img.into();
+    // let _ = img.save("test_par.png");
 
     // let mut img = MutexGrid::<u8>::new(4096, 4096);
     // img.fractalize(1_000_000_000);
@@ -117,25 +124,29 @@ fn main() {
     // let img: MyGreyImage<_> = img.into();
     // let _ = img.save("sqrtimg.png");
 
-    let a = Arc::new(RefCell::new(vec![0; 2]));
-    let mut aa = a.as_ref().borrow_mut();
-    let mut aaa = a.as_ref().borrow_mut();
+    // let a = Arc::new(RefCell::new(vec![0; 2]));
+    // let mut aa = a.as_ref().borrow_mut();
+    // let mut aaa = a.as_ref().borrow_mut();
 
-    aa[0] = 1;
-    aaa[1] = 2;
+    // aa[0] = 1;
+    // aaa[1] = 2;
     
-    println!("{:?}", a);
+    // println!("{:?}", a);
+    // println!("Elapsed time: {}", start.elapsed().as_secs_f64());
 }
 
 fn test() {
     let mut t = Table::<f64>::default();
-    t.name = "SerialMethod8192x8192".to_string();
     
-    const DIM: u32 = 8192;
+    const NAME: &str = "TrivialSerial";
+    const DIM: usize = 4096;
     const START: usize = 1_000_000;
     const END: usize = 1_000_000_000;
     const NUM_PTS_TESTS: usize = 10;
     const NUM_REPS: usize = 5;
+    
+    // t.name = "SerialMethod8192x8192".to_string();
+    t.name = format!("{NAME}_{DIM}x{DIM}_{START}_to_{END}_in_{NUM_PTS_TESTS}_steps_{NUM_REPS}_reps_each");
     
     let mut cur_pts = START;
 
@@ -157,7 +168,7 @@ fn test() {
 
         for _ in 0..NUM_REPS
         {
-            let time = mutex_grid_fractal_c(DIM, cur_pts);
+            let time = time_and_save(DIM, cur_pts);
             r.add_elem(time);
         }
     
@@ -170,3 +181,40 @@ fn test() {
     println!("{:?}", postcard::to_stdvec(&t).unwrap());
 }
 
+#[cfg(test)]
+mod test
+{
+    use RustFractal::{fractal::Fractalize, my_grid::{MyGrid, MyGreyImage}};
+
+    #[test]
+    fn test_basic() -> Result<(), image::ImageError>
+    {
+        let mut img = MyGrid::<u8>::new(512, 512);
+        img.fractalize(1_000_000);
+        let img: MyGreyImage<_> = img.into();
+        img.save("test/test_basic.png")
+    }
+
+    #[test]
+    fn mutex_grid_random_static() -> Result<(), image::ImageError>
+    {
+        let mut img = 
+            MyGrid::<u8>::new(256, 256);
+        
+        img.r#static();
+
+        let img: MyGreyImage<_> = img.into();
+        img.save("test/static_noise.png")
+    }
+
+    #[test]
+    fn sprs_grid_fractalize() -> Result<(), image::ImageError>
+    {
+        let mut s: sprs::CsMat<u8> = sprs::CsMatBase::zero((512, 512));
+        s.fractalize(1_000_000);
+
+        let s: MyGrid<u8> = s.into();
+        let s: MyGreyImage<u8> = s.into();
+        s.save("test/sprs_grid_fractalize.png")
+    }
+}

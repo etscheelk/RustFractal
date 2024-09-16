@@ -70,11 +70,11 @@ where
 
         let rot: f64 = 1.724643921305295;
         let theta_offset: f64 = 3.0466792337230033;
-        let num_pts = 10_000_000_usize;
+        // let num_pts = 10_000_000_usize;
 
         // let mut rng = rand::thread_rng();
         
-        for _ in 0..num_pts
+        for _ in 0..num_points
         {
             let this_rand = rand::random::<u64>();
 
@@ -127,11 +127,11 @@ where
 
         let rot: f64 = 1.724643921305295;
         let theta_offset: f64 = 3.0466792337230033;
-        let num_pts = 10_000_000_usize;
+        // let num_pts = 10_000_000_usize;
 
         // let mut rng = rand::thread_rng();
         
-        for _ in 0..num_pts
+        for _ in 0..num_points
         {
             let this_rand = rand::random::<u64>();
 
