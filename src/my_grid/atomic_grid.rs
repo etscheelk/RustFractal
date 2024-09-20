@@ -1,4 +1,4 @@
-use std::sync::atomic::AtomicU8;
+use std::{cell::RefCell, sync::{atomic::AtomicU8, Arc}};
 
 use rand::Rng;
 
@@ -102,22 +102,59 @@ impl Fractalize for AtomicGrid
             (r * cols + c) as usize
         };
 
-        for rand in rands
+        // for rand in rands
+        // {
+        //     for i in 0..64_u8
+        //     {
+        //         let this_rand = rand & (1 << i);
+
+        //         (x, y) = transform(x, y, this_rand == 0);
+
+        //         let (r, c) = xy_to_grid_loc(x, y);
+
+        //         if let Some(p) = self.grid.get_mut(flat_index(r, c))
+        //         {
+        //             p.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+        //         }
+        //     }   
+        // }
+
+        // let rf = RefCell::new(self.grid);
+        let len = self.grid.len();
+        let num_threads = 1;
+        let chunk_size = len / num_threads;
+        std::thread::scope(
+        |scope|
         {
-            for i in 0..64_u8
+            self.grid
+            .chunks_exact_mut(chunk_size)
+            .enumerate()
+            .for_each(
+            |(i, sub_slice)|
             {
-                let this_rand = rand & (1 << i);
-
-                (x, y) = transform(x, y, this_rand == 0);
-
-                let (r, c) = xy_to_grid_loc(x, y);
-
-                if let Some(p) = self.grid.get_mut(flat_index(r, c))
+                let rands = rands.clone();
+                scope.spawn(
+                move ||
                 {
-                    p.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
-                }
-            }   
-        }
+                    let range = (i*chunk_size)..=((i+1)*chunk_size);
+                    for rand in rands
+                    {
+                        for i in 0..64_u8
+                        {
+                            let this_rand = rand & (1 << i);
+                            (x, y) = transform(x, y, this_rand == 0);
+                            let (r, c) = xy_to_grid_loc(x, y);
+                            let index = flat_index(r, c);
+
+                            if range.contains(&index)
+                            {
+                                sub_slice[index - range.start()].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            }
+                        }
+                    }
+                });
+            });
+        });
     }
 }
 
@@ -148,7 +185,8 @@ mod test
     {
         let ag = AtomicGrid::new(100, 100);
 
-        let _is_send: &dyn Send = &ag;
+        let mut _is_send: &dyn Send = &ag.grid;
+        let mut _is_sync: &dyn Sync = &ag.grid;
     }
 
     #[test]
