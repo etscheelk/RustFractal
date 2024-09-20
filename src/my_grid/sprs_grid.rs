@@ -2,24 +2,25 @@ use std::f64::consts::PI;
 
 use rand::prelude::*;
 
+use crate::fractal::FractalizeParameters;
+
 use super::MyGrid;
 
 // FAR TOO SLOW
 impl crate::fractal::Fractalize for sprs::CsMat<u8>
 {
-    fn fractalize(&mut self, num_points: usize) -> () 
+    fn fractalize(&mut self, p: FractalizeParameters) -> () 
     {
         let distr = 
             rand::distributions::Uniform::new(0, self.rows());
         let mut rng = rand::thread_rng();
+        let (mut x, mut y) = p.init_x_y();
+        let max_points = p.max_points();
+        let rot = p.rot();
+        let theta_offset = p.theta_offset();
+        let method = p.method();
 
-        let mut x: f64 = 0.0;
-        let mut y: f64 = 0.5;
-        
-        let rot: f64 = 1.724643921305295;
-        let theta_offset: f64 = 3.0466792337230033;
-
-        for _ in 0..num_points
+        for _ in 0..max_points
         {
             let this_rand = distr.sample(&mut rng);
 

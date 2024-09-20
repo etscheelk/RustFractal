@@ -1,9 +1,12 @@
 pub mod sprs_grid;
+pub mod atomic_grid;
 
 use std::{f64::consts::PI, ops::{Deref, DerefMut}, thread};
 
 use image::flat;
 use rand::prelude::*;
+
+use crate::fractal::FractalizeParameters;
 
 pub struct MyGrid<P>
 {
@@ -36,14 +39,15 @@ where
         let chunk_size = ((self.grid.len() as f64) / (threads as f64)).ceil() as usize;
         let slice = self.grid.as_mut_slice();
 
-        crossbeam::scope(|scope| {
+        // crossbeam::scope(|scope| {
+        std::thread::scope(|scope| {
             slice
             .chunks_mut(chunk_size)
             .for_each(
                 |sub_slice: &mut [P]| -> ()
                 {
                     scope.spawn(
-                        move |_|
+                        move ||
                         {
                             sub_slice
                             .iter_mut()
@@ -53,7 +57,7 @@ where
                 }
             )
         })
-        .expect("Some thread panicked");
+        // .expect("Some thread panicked");
     }
 
     pub fn r#static(&mut self) -> () 
@@ -83,17 +87,18 @@ impl<T> crate::fractal::Fractalize for MyGrid<T>
 where
     T: image::Primitive + num_traits::CheckedAdd + Send,
 {
-    fn fractalize(&mut self, num_points: usize) -> () 
+    fn fractalize(&mut self, p: FractalizeParameters) -> () 
     {
+        let (mut x, mut y) = p.init_x_y();
+        let max_points = p.max_points();
+        let rot = p.rot();
+        let theta_offset = p.theta_offset();
+        let method = p.method();
+
         let distr = 
             rand::distributions::Uniform::new(0, usize::MAX);
-        let rands: Vec<usize> = rand::thread_rng().sample_iter(&distr).take(num_points / 64).collect();
+        let rands: Vec<usize> = rand::thread_rng().sample_iter(&distr).take(max_points / 64).collect();
 
-        let mut x: f64 = 0.5;
-        let mut y: f64 = 0.5;
-        
-        let rot: f64 = 1.724643921305295;
-        let theta_offset: f64 = 3.0466792337230033;
 
         let rows = self.rows;
         let cols = self.cols;
@@ -155,7 +160,7 @@ where
                 move ||
                 {
                     let mut rng = thread_rng();
-                    for _ in 0..(num_points/4)
+                    for _ in 0..(max_points/4)
                     {
                         let b = (rng.sample(distr) & 1) == 0;
                         (x, y) = transform(x, y, b);
@@ -368,7 +373,7 @@ impl crate::fractal::Fractalize for MyGridPar<u8>
 // where
 //     P: image::Primitive + num_traits::CheckedAdd + Add + Send,
 {
-    fn fractalize(&mut self, num_points: usize) -> () 
+    fn fractalize(&mut self, p: FractalizeParameters) -> () 
     {
         // Strategy: Create a sparse matrix and use that in each thread
         // Upon thread join, add the matrices, convert 
@@ -377,6 +382,12 @@ impl crate::fractal::Fractalize for MyGridPar<u8>
         let matrix_size = (self.rows as usize, self.cols as usize);
 
         let mut handles = vec![];
+
+        let (mut x, mut y) = p.init_x_y();
+        let max_points = p.max_points();
+        let rot = p.rot();
+        let theta_offset = p.theta_offset();
+        let method = p.method();
 
         for _ in 0..num_threads
         {
@@ -397,7 +408,7 @@ impl crate::fractal::Fractalize for MyGridPar<u8>
                     let rot: f64 = 1.724643921305295;
                     let theta_offset: f64 = 3.0466792337230033;
 
-                    for _ in 0..(num_points / num_threads)
+                    for _ in 0..(max_points / num_threads)
                     {
                         // if ii % 100_000 == 0 { println!("{ii} in thread {i}"); }
                         let this_rand = distr.sample(&mut rng);
@@ -493,13 +504,15 @@ where
 #[cfg(test)]
 mod test
 {
+    use crate::fractal::FractalizeParameters;
+
     #[ignore = "Don't want this to run every time"]
     #[test]
     fn main()
     {
         use crate::fractal::Fractalize;
         let mut img = super::MyGrid::<u8>::new(1024, 1024);
-        img.fractalize(10_000_000);
+        img.fractalize(FractalizeParameters::default().with_max_points(1_000_000));
 
         let img: super::MyGreyImage<_> = img.into();
         let _ = img.save("image_a.png");
