@@ -6,7 +6,7 @@ use crate::fractal::{Fractalize, FractalizeParameters};
 
 use super::MyGreyImage;
 
-const MUTEX_CELL_LENGTH: u32 = 256;
+const MUTEX_CELL_LENGTH: u32 = 1024;
 
 /// A grid of mutex guards of size 256. Either a strip 256 long or 
 pub struct AtomicGrid
@@ -130,20 +130,63 @@ impl Fractalize for AtomicGrid
         };
 
         // linear
-        for rand in rands
-        {
-            for i in 0..64_u8
-            {
-                let this_rand = rand & (1 << i);
-                (x, y) = transform(x, y, this_rand == 0);
-                let (r, c) = xy_to_grid_loc(x, y);
-                let index = flat_index(r, c);
-                let mc_index = index / MUTEX_CELL_LENGTH as usize;
-                let internal_index = index % MUTEX_CELL_LENGTH as usize;
+        // for rand in rands
+        // {
+        //     for i in 0..64_u8
+        //     {
+        //         let this_rand = rand & (1 << i);
+        //         (x, y) = transform(x, y, this_rand == 0);
+        //         let (r, c) = xy_to_grid_loc(x, y);
+        //         let index = flat_index(r, c);
+        //         let mc_index = index / MUTEX_CELL_LENGTH as usize;
+        //         let internal_index = index % MUTEX_CELL_LENGTH as usize;
                 
-                self.grid[mc_index].sub_grid.lock().unwrap()[internal_index] += 1;
-            }
-        }
+        //         self.grid[mc_index].sub_grid.lock().unwrap()[internal_index] += 1;
+        //     }
+        // }
+
+        // parallel chunks
+        const NUM_THREADS: usize = 12;
+        let chunk_size = self.num_mutex_cells as usize / NUM_THREADS;
+        let slice = self.grid.as_slice();        
+        std::thread::scope(
+        |scope|
+        {
+            slice
+            .chunks_exact(chunk_size)
+            .enumerate()
+            .for_each(
+            |(i, sub_slice)|
+            {
+                let rands_slice = rands.as_slice();
+                scope.spawn(
+                move ||
+                {
+                    // let valid_range = (i * chunk_size * MUTEX_CELL_LENGTH as usize)..=((i+1) * chunk_size * MUTEX_CELL_LENGTH as usize);
+                    let valid_range = (i * chunk_size)..((i+1) * chunk_size);
+                    println!("range for thread {i}: {:?}", valid_range);
+                    for rand in rands_slice
+                    {
+                        for i in 0..64_u8
+                        {
+                            let this_rand: bool = (rand & (1 << i)) == 0;
+                            (x, y) = transform(x, y, this_rand);
+                            let (r, c) = xy_to_grid_loc(x, y);
+                            let index = flat_index(r, c);
+                            let mc_index = index / MUTEX_CELL_LENGTH as usize;
+                            if !valid_range.contains(&mc_index) { continue }
+                            let internal_index = index % MUTEX_CELL_LENGTH as usize;
+
+                            // sub_slice[mc_index - valid_range.start].sub_grid.lock().unwrap()[internal_index] += 1;
+                            if let Some(p) = sub_slice.get(mc_index - valid_range.start)
+                            {
+                                p.sub_grid.lock().unwrap()[internal_index] += 1;
+                            }
+                        }
+                    }
+                });
+            });
+        });
 
     }
 }
