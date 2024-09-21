@@ -52,7 +52,8 @@ impl AtomicGrid
     /// Creates a grid that must fit MutexCell blocks of length 256.
     pub fn new(rows: u32, cols: u32) -> Self
     {
-        assert_eq!((rows * cols) % MUTEX_CELL_LENGTH, 0);
+        // assert_eq!((rows * cols) % MUTEX_CELL_LENGTH, 0);
+        if ((rows * cols) % MUTEX_CELL_LENGTH) != 0 { panic!("Total number of pixels must be divisible by MUTEX_CELL_LENGTH ({})", MUTEX_CELL_LENGTH); }
 
         let num_mutex_cells = (rows * cols) / MUTEX_CELL_LENGTH;
 
@@ -104,7 +105,12 @@ impl Fractalize for AtomicGrid
             else
             {
                 let rad = x * 0.5 + 0.5;
-                let theta = y * std::f64::consts::PI + theta_offset;
+                let theta = match method
+                {
+                    crate::fractal::FractalMethod::Default => y * std::f64::consts::PI + theta_offset,
+                    crate::fractal::FractalMethod::MultiplyTheta => y * std::f64::consts::PI * theta_offset,
+                };
+                // y * std::f64::consts::PI + theta_offset;
                 (
                     rad * theta.cos(),
                     rad * theta.sin()
@@ -146,7 +152,7 @@ impl Fractalize for AtomicGrid
         // }
 
         // parallel chunks
-        const NUM_THREADS: usize = 12;
+        const NUM_THREADS: usize = 4;
         let chunk_size = self.num_mutex_cells as usize / NUM_THREADS;
         let slice = self.grid.as_slice();        
         std::thread::scope(
@@ -177,17 +183,26 @@ impl Fractalize for AtomicGrid
                             if !valid_range.contains(&mc_index) { continue }
                             let internal_index = index % MUTEX_CELL_LENGTH as usize;
 
-                            // sub_slice[mc_index - valid_range.start].sub_grid.lock().unwrap()[internal_index] += 1;
-                            if let Some(p) = sub_slice.get(mc_index - valid_range.start)
+                            let val = &mut sub_slice[mc_index - valid_range.start].sub_grid.lock().unwrap()[internal_index];
+                            // *val = match val.checked_add(1)
+                            // {
+                            //     Some(new) => { new },
+                            //     None => { /* println!("Overexposed value"); */  *val }
+                            // };
+
+                            if let Some(new) = val.checked_add(1)
                             {
-                                p.sub_grid.lock().unwrap()[internal_index] += 1;
+                                *val = new;
                             }
+                            // if let Some(p) = sub_slice.get(mc_index - valid_range.start)
+                            // {
+                            //     p.sub_grid.lock().unwrap()[internal_index] += 1;
+                            // }
                         }
                     }
                 });
             });
         });
-
     }
 }
 

@@ -53,6 +53,7 @@ pub enum FractalMethod
 {
     #[default]
     Default,
+    MultiplyTheta,
 }
 
 impl Default for FractalizeParameters
