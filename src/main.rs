@@ -78,7 +78,7 @@ fn main() {
     // test();
     let p = 
         FractalizeParameters::default()
-        .with_max_points(50_000_000)
+        .with_max_points(250_000_000)
         .with_method(RustFractal::fractal::FractalMethod::Default);
         // .with_theta_offset(0.75)
         // .with_rot(0.37);

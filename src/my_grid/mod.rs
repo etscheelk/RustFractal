@@ -92,8 +92,15 @@ where
     {
         let (mut x, mut y) = p.init_x_y();
         let max_points = p.max_points();
+        
         let rot = p.rot();
+        let rot_cos = rot.cos();
+        let rot_sin = rot.sin();
+
         let theta_offset = p.theta_offset();
+        let theta_add = PI + theta_offset;
+        let theta_mult =  PI * theta_offset;;
+
         let method = p.method();
 
         let distr = 
@@ -111,14 +118,14 @@ where
             if s
             {
                 (
-                    x * rot.cos() + y * rot.sin(),
-                    y * rot.cos() - x * rot.sin()
+                    x * rot_cos + y * rot_sin,
+                    y * rot_cos - x * rot_sin
                 )
             }
             else
             {
                 let rad = x * 0.5 + 0.5;
-                let theta: f32 = y * PI + theta_offset;
+                let theta: f32 = y * theta_mult;
                 (
                     rad * theta.cos(),
                     rad * theta.sin()
@@ -144,6 +151,8 @@ where
             // let c: f32 = x.mul_add(0.5, 0.5) * cols as f32;
         
             // let f = 0.2;
+
+            // (r as usize, c as usize)
 
             unsafe {
                 (r.to_int_unchecked(), c.to_int_unchecked())
@@ -324,12 +333,12 @@ where
         
                     if let Some(pixel) = self.grid.get_mut(flat_index(r, c))
                     {
-                        // *pixel = match pixel.checked_add(&T::one())
-                        // {
-                        //     Some(v) => v,
-                        //     None => *pixel
-                        // }
-                        *pixel += T::one();
+                        *pixel = match pixel.checked_add(&T::one())
+                        {
+                            Some(v) => v,
+                            None => *pixel
+                        }
+                        // *pixel += T::one();
                     }
                 }
             }
