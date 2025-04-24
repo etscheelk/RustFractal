@@ -1,4 +1,4 @@
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 
 use rand::prelude::*;
 
@@ -46,8 +46,8 @@ impl crate::fractal::Fractalize for sprs::CsMat<u8>
 
             // add point to array
             // assumes square right now
-            let xx = (x / 2.0 + 0.5) * self.rows() as f64;
-            let yy = (y / 2.0 + 0.5) * self.cols() as f64;
+            let xx = (x / 2.0 + 0.5) * self.rows() as f32;
+            let yy = (y / 2.0 + 0.5) * self.cols() as f32;
 
             match self.get_mut(xx as usize, yy as usize)
             {

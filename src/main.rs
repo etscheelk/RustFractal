@@ -78,15 +78,15 @@ fn main() {
     // test();
     let p = 
         FractalizeParameters::default()
-        .with_max_points(500_000_000)
-        .with_method(RustFractal::fractal::FractalMethod::MultiplyTheta)
-        .with_theta_offset(0.75)
-        .with_rot(0.37);
+        .with_max_points(50_000_000)
+        .with_method(RustFractal::fractal::FractalMethod::Default);
+        // .with_theta_offset(0.75)
+        // .with_rot(0.37);
 
 
-    // let mut img = MyGrid::<u8>::new(4096, 4096);
+    let mut img = MyGrid::<u8>::new(4096, 4096);
     // let mut img = crate::my_grid::atomic_grid::AtomicGrid::new();
-    let mut img = AtomicGrid::new(4096, 4096);
+    // let mut img = AtomicGrid::new(2048, 2048);
     println!("time to create grid: {} seconds", start.elapsed().as_secs_f64());
     let start = Instant::now();
     img.fractalize(p);

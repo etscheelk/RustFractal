@@ -1,4 +1,4 @@
-use std::{f64::consts::PI, sync::{Mutex, MutexGuard}};
+use std::{f32::consts::PI, sync::{Mutex, MutexGuard}};
 use derive_setters::*;
 use derive_getters::*;
 use image::Pixel;
@@ -41,9 +41,9 @@ pub trait Fractalize
 pub struct FractalizeParameters
 {
     // #[setters(skip)]
-    init_x_y: (f64, f64),
-    rot: f64,
-    theta_offset: f64,
+    init_x_y: (f32, f32),
+    rot: f32,
+    theta_offset: f32,
     method: FractalMethod,
     max_points: usize,
 }
@@ -129,8 +129,8 @@ where
 
             // add point to array
             // assumes square right now
-            let xx = (x / 2.0 + 0.5) * self.width() as f64;
-            let yy = (y / 2.0 + 0.5) * self.height() as f64;
+            let xx = (x / 2.0 + 0.5) * self.width() as f32;
+            let yy = (y / 2.0 + 0.5) * self.height() as f32;
 
             if let Some(pixel) = self.get_pixel_mut_checked(xx as u32, yy as u32)
             {
@@ -189,8 +189,8 @@ where
 
             let mut img: MutexGuard<image::ImageBuffer<_, _> > = self.lock().unwrap();
 
-            let xx = (x / 2.0 + 0.5) * img.width() as f64;
-            let yy = (y / 2.0 + 0.5) * img.height() as f64;
+            let xx = (x / 2.0 + 0.5) * img.width() as f32;
+            let yy = (y / 2.0 + 0.5) * img.height() as f32;
 
             if let Some(pixel) = img.get_pixel_mut_checked(xx as u32, yy as u32)
             {
@@ -224,11 +224,11 @@ impl Image
 
     pub fn fractalize(&mut self) -> ()
     {
-        let mut x: f64 = 0.0;
-        let mut y: f64 = 0.5;
+        let mut x: f32 = 0.0;
+        let mut y: f32 = 0.5;
 
-        let rot: f64 = 1.724643921305295;
-        let theta_offset: f64 = 3.0466792337230033;
+        let rot: f32 = 1.724643921305295;
+        let theta_offset: f32 = 3.0466792337230033;
         let num_pts = 10_000_000_usize;
 
         // let mut rng = rand::thread_rng();
@@ -246,7 +246,7 @@ impl Image
             }
             else
             {
-                let rad = x * 0.5 + 0.5;
+                let rad: f32 = x * 0.5 + 0.5;
                 let theta = y * PI + theta_offset;
 
                 x = rad * theta.cos();
@@ -255,8 +255,8 @@ impl Image
 
             // add point to array
             // assumes square right now
-            let xx = (x / 2.0 + 0.5) * self.x as f64;
-            let yy = (y / 2.0 + 0.5) * self.x as f64;
+            let xx = (x / 2.0 + 0.5) * self.x as f32;
+            let yy = (y / 2.0 + 0.5) * self.x as f32;
 
             // println!("row: {}\ncol: {}\nindex: {}", yy as usize, xx as usize, (yy as usize) * self.x + (xx as usize));
 

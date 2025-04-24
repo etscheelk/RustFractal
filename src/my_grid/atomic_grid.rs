@@ -92,7 +92,7 @@ impl Fractalize for AtomicGrid
         let cols = self.cols;
 
         let transform = 
-        move |x: f64, y: f64, s: bool| -> (f64, f64)
+        move |x, y, s: bool|
         {
             let (x, y) = 
             if s
@@ -105,10 +105,10 @@ impl Fractalize for AtomicGrid
             else
             {
                 let rad = x * 0.5 + 0.5;
-                let theta = match method
+                let theta: f32 = match method
                 {
-                    crate::fractal::FractalMethod::Default => y * std::f64::consts::PI + theta_offset,
-                    crate::fractal::FractalMethod::MultiplyTheta => y * std::f64::consts::PI * theta_offset,
+                    crate::fractal::FractalMethod::Default => y * std::f32::consts::PI + theta_offset,
+                    crate::fractal::FractalMethod::MultiplyTheta => y * std::f32::consts::PI * theta_offset,
                 };
                 // y * std::f64::consts::PI + theta_offset;
                 (
@@ -121,10 +121,10 @@ impl Fractalize for AtomicGrid
         };
 
         let xy_to_grid_loc =
-        move |x: f64, y: f64| -> (u32, u32)
+        move |x, y| -> (u32, u32)
         {
-            let r = (y / 2.0 + 0.5) * rows as f64;
-            let c = (x / 2.0 + 0.5) * cols as f64;
+            let r = (y / 2.0 + 0.5) * rows as f32;
+            let c = (x / 2.0 + 0.5) * cols as f32;
 
             return (r as u32, c as u32);
         };
