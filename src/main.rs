@@ -51,7 +51,7 @@ where
     T: std::fmt::Debug
 {
     name: String,
-    col_names: Vec<String>,
+    // col_names: Vec<String>,
     rows: Vec<Row<T>>,
 }
 
