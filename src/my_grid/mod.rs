@@ -1,9 +1,13 @@
 pub mod sprs_grid;
+pub mod atomic_grid;
 
-use std::{f64::consts::PI, ops::{Deref, DerefMut}, thread};
+use std::{f32::consts::PI, ops::{Deref, DerefMut}, thread};
 
 use image::flat;
+use num_traits::Float;
 use rand::prelude::*;
+
+use crate::fractal::FractalizeParameters;
 
 pub struct MyGrid<P>
 {
@@ -36,14 +40,15 @@ where
         let chunk_size = ((self.grid.len() as f64) / (threads as f64)).ceil() as usize;
         let slice = self.grid.as_mut_slice();
 
-        crossbeam::scope(|scope| {
+        // crossbeam::scope(|scope| {
+        std::thread::scope(|scope| {
             slice
             .chunks_mut(chunk_size)
             .for_each(
                 |sub_slice: &mut [P]| -> ()
                 {
                     scope.spawn(
-                        move |_|
+                        move ||
                         {
                             sub_slice
                             .iter_mut()
@@ -53,7 +58,7 @@ where
                 }
             )
         })
-        .expect("Some thread panicked");
+        // .expect("Some thread panicked");
     }
 
     pub fn r#static(&mut self) -> () 
@@ -81,38 +86,46 @@ where
 
 impl<T> crate::fractal::Fractalize for MyGrid<T>
 where
-    T: image::Primitive + num_traits::CheckedAdd + Send,
+    T: image::Primitive + num_traits::CheckedAdd + Send + std::ops::AddAssign + std::ops::Add,
 {
-    fn fractalize(&mut self, num_points: usize) -> () 
+    fn fractalize(&mut self, p: FractalizeParameters) -> () 
     {
+        let (mut x, mut y) = p.init_x_y();
+        let max_points = p.max_points();
+        
+        let rot = p.rot();
+        let rot_cos = rot.cos();
+        let rot_sin = rot.sin();
+
+        let theta_offset = p.theta_offset();
+        let theta_add = PI + theta_offset;
+        let theta_mult =  PI * theta_offset;;
+
+        let method = p.method();
+
         let distr = 
             rand::distributions::Uniform::new(0, usize::MAX);
-        let rands: Vec<usize> = rand::thread_rng().sample_iter(&distr).take(num_points / 64).collect();
+        let rands: Vec<usize> = rand::thread_rng().sample_iter(&distr).take(max_points / 64).collect();
 
-        let mut x: f64 = 0.5;
-        let mut y: f64 = 0.5;
-        
-        let rot: f64 = 1.724643921305295;
-        let theta_offset: f64 = 3.0466792337230033;
 
         let rows = self.rows;
         let cols = self.cols;
 
         let transform = 
-        move |x: f64, y: f64, s: bool| -> (f64, f64)
+        move |x, y, s: bool|
         {
             let (x, y) = 
             if s
             {
                 (
-                    x * rot.cos() + y * rot.sin(),
-                    y * rot.cos() - x * rot.sin()
+                    x * rot_cos + y * rot_sin,
+                    y * rot_cos - x * rot_sin
                 )
             }
             else
             {
                 let rad = x * 0.5 + 0.5;
-                let theta = y * PI + theta_offset;
+                let theta: f32 = y * theta_mult;
                 (
                     rad * theta.cos(),
                     rad * theta.sin()
@@ -123,12 +136,27 @@ where
         };
 
         let xy_to_grid_loc =
-        move |x, y| -> (usize, usize)
+        move |x: f32, y: f32| -> (usize, usize)
         {
-            let r = (y / 2.0 + 0.5) * rows as f64;
-            let c = (x / 2.0 + 0.5) * cols as f64;
+            // unsafe 
+            // {
+            //     let r= (y * 0.5_f32 + 0.5_f32).to_int_unchecked::<usize>() * rows;
+            //     let c = (x * 0.5 + 0.5).to_int_unchecked::<usize>() * cols;
+            //     (r, c)
+            // }
+            let r: f32 = (y * 0.5 + 0.5) * rows as f32;
+            let c: f32 = (x * 0.5 + 0.5) * cols as f32;
 
-            return (r as usize, c as usize);
+            // let r: f32 = y.mul_add(0.5, 0.5) * rows as f32;
+            // let c: f32 = x.mul_add(0.5, 0.5) * cols as f32;
+        
+            // let f = 0.2;
+
+            // (r as usize, c as usize)
+
+            unsafe {
+                (r.to_int_unchecked(), c.to_int_unchecked())
+            }
         };
 
         let flat_index =
@@ -144,7 +172,7 @@ where
 
             for i in 0..4
             {
-                let angle = 2.0 * PI / 4_f64 * i as f64;
+                let angle = 2.0 * PI / 4_f32 * i as f32;
                 // let (mut x, mut y) = 0.5 * (2.0 * PI / 4 as f64)
                 // let (mut x, mut y) = (0.75 * angle.cos(), 0.1 * angle.sin());
                 let (mut x, mut y) = (0.5, 0.5);
@@ -155,7 +183,7 @@ where
                 move ||
                 {
                     let mut rng = thread_rng();
-                    for _ in 0..(num_points/4)
+                    for _ in 0..(max_points/4)
                     {
                         let b = (rng.sample(distr) & 1) == 0;
                         (x, y) = transform(x, y, b);
@@ -182,6 +210,7 @@ where
                         Some(v) => v,
                         None => *pixel
                     }
+                    // *pixel += T::one();
                 }
             }
         };
@@ -210,7 +239,7 @@ where
                     scope.spawn(
                     move ||
                     {
-                        let angle = 2.0 * PI / (num_threads as f64) * (i as f64);
+                        let angle = 2.0 * PI / (num_threads as f32) * (i as f32);
                         let (mut x, mut y) = (0.5 * angle.cos(), 0.5 * angle.sin());
                         for this_rand in sub_slice
                         {
@@ -309,6 +338,7 @@ where
                             Some(v) => v,
                             None => *pixel
                         }
+                        // *pixel += T::one();
                     }
                 }
             }
@@ -368,7 +398,7 @@ impl crate::fractal::Fractalize for MyGridPar<u8>
 // where
 //     P: image::Primitive + num_traits::CheckedAdd + Add + Send,
 {
-    fn fractalize(&mut self, num_points: usize) -> () 
+    fn fractalize(&mut self, p: FractalizeParameters) -> () 
     {
         // Strategy: Create a sparse matrix and use that in each thread
         // Upon thread join, add the matrices, convert 
@@ -377,6 +407,12 @@ impl crate::fractal::Fractalize for MyGridPar<u8>
         let matrix_size = (self.rows as usize, self.cols as usize);
 
         let mut handles = vec![];
+
+        let (mut x, mut y) = p.init_x_y();
+        let max_points = p.max_points();
+        let rot = p.rot();
+        let theta_offset = p.theta_offset();
+        let method = p.method();
 
         for _ in 0..num_threads
         {
@@ -391,13 +427,13 @@ impl crate::fractal::Fractalize for MyGridPar<u8>
                     let distr = rand::distributions::Uniform::new(0, matrix_size.0);
                     let mut rng = rand::thread_rng();
 
-                    let mut x: f64 = 0.0;
-                    let mut y: f64 = 0.5;
+                    let mut x: f32 = 0.0;
+                    let mut y: f32 = 0.5;
 
-                    let rot: f64 = 1.724643921305295;
-                    let theta_offset: f64 = 3.0466792337230033;
+                    let rot: f32 = 1.724643921305295;
+                    let theta_offset: f32 = 3.0466792337230033;
 
-                    for _ in 0..(num_points / num_threads)
+                    for _ in 0..(max_points / num_threads)
                     {
                         // if ii % 100_000 == 0 { println!("{ii} in thread {i}"); }
                         let this_rand = distr.sample(&mut rng);
@@ -420,8 +456,8 @@ impl crate::fractal::Fractalize for MyGridPar<u8>
                             )
                         };
 
-                        let xx = (x / 2.0 + 0.5) * matrix_size.0 as f64;
-                        let yy = (y / 2.0 + 0.5) * matrix_size.1 as f64;
+                        let xx = (x / 2.0 + 0.5) * matrix_size.0 as f32;
+                        let yy = (y / 2.0 + 0.5) * matrix_size.1 as f32;
 
                         // TODO: Checked add?
                         match local_matrix.get_mut(xx as usize, yy as usize)
@@ -493,13 +529,15 @@ where
 #[cfg(test)]
 mod test
 {
+    use crate::fractal::FractalizeParameters;
+
     #[ignore = "Don't want this to run every time"]
     #[test]
     fn main()
     {
         use crate::fractal::Fractalize;
         let mut img = super::MyGrid::<u8>::new(1024, 1024);
-        img.fractalize(10_000_000);
+        img.fractalize(FractalizeParameters::default().with_max_points(1_000_000));
 
         let img: super::MyGreyImage<_> = img.into();
         let _ = img.save("image_a.png");

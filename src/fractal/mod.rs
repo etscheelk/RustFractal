@@ -1,5 +1,6 @@
-use std::{f64::consts::PI, sync::{Mutex, MutexGuard}};
-
+use std::{f32::consts::PI, sync::{Mutex, MutexGuard}};
+use derive_setters::*;
+use derive_getters::*;
 use image::Pixel;
 
 pub trait Index2D<Idx, Idy>
@@ -31,7 +32,42 @@ where
 
 pub trait Fractalize
 {
-    fn fractalize(&mut self, num_points: usize) -> ();
+    fn fractalize(&mut self, p: FractalizeParameters) -> ();
+}
+
+#[derive(Setters, Getters, Clone, Copy)]
+#[setters(prefix = "with_")]
+#[getter(prefix = "get_")]
+pub struct FractalizeParameters
+{
+    // #[setters(skip)]
+    init_x_y: (f32, f32),
+    rot: f32,
+    theta_offset: f32,
+    method: FractalMethod,
+    max_points: usize,
+}
+
+#[derive(Default, Clone, Copy)]
+pub enum FractalMethod
+{
+    #[default]
+    Default,
+    MultiplyTheta,
+}
+
+impl Default for FractalizeParameters
+{
+    fn default() -> Self {
+        Self 
+        { 
+            init_x_y: (0.0, 0.5), 
+            rot: 1.724643921305295,
+            theta_offset: 3.0466792337230033,
+            method: Default::default(),
+            max_points: 1_000_000
+        }
+    }
 }
 
 pub struct Image
@@ -63,18 +99,15 @@ impl<P> Fractalize for image::ImageBuffer<image::Luma<P>, Vec<P> >
 where
     P: image::Primitive + num_traits::CheckedAdd,
 {
-    fn fractalize(&mut self, num_points: usize) -> () 
-    {
-        let mut x: f64 = 0.0;
-        let mut y: f64 = 0.5;
+    fn fractalize(&mut self, p: FractalizeParameters) -> () 
+    {   
+        let (mut x, mut y) = p.init_x_y();
+        let rot = p.rot();
+        let theta_offset = p.theta_offset();
+        let _ = p.method();
+        let max_points = p.max_points();
 
-        let rot: f64 = 1.724643921305295;
-        let theta_offset: f64 = 3.0466792337230033;
-        // let num_pts = 10_000_000_usize;
-
-        // let mut rng = rand::thread_rng();
-        
-        for _ in 0..num_points
+        for _ in 0..max_points
         {
             let this_rand = rand::random::<u64>();
 
@@ -96,8 +129,8 @@ where
 
             // add point to array
             // assumes square right now
-            let xx = (x / 2.0 + 0.5) * self.width() as f64;
-            let yy = (y / 2.0 + 0.5) * self.height() as f64;
+            let xx = (x / 2.0 + 0.5) * self.width() as f32;
+            let yy = (y / 2.0 + 0.5) * self.height() as f32;
 
             if let Some(pixel) = self.get_pixel_mut_checked(xx as u32, yy as u32)
             {
@@ -120,18 +153,18 @@ impl<P> Fractalize for Mutex<image::ImageBuffer<image::Luma<P>, Vec<P> > >
 where
     P: image::Primitive + num_traits::CheckedAdd 
 {
-    fn fractalize(&mut self, num_points: usize) -> () 
+    fn fractalize(&mut self, params: FractalizeParameters) -> () 
     {
-        let mut x: f64 = 0.0;
-        let mut y: f64 = 0.5;
-
-        let rot: f64 = 1.724643921305295;
-        let theta_offset: f64 = 3.0466792337230033;
-        // let num_pts = 10_000_000_usize;
-
-        // let mut rng = rand::thread_rng();
+        let FractalizeParameters 
+        { 
+            init_x_y: (mut x, mut y), 
+            rot, 
+            theta_offset, 
+            method: _, 
+            max_points 
+        } = params;
         
-        for _ in 0..num_points
+        for _ in 0..max_points
         {
             let this_rand = rand::random::<u64>();
 
@@ -156,8 +189,8 @@ where
 
             let mut img: MutexGuard<image::ImageBuffer<_, _> > = self.lock().unwrap();
 
-            let xx = (x / 2.0 + 0.5) * img.width() as f64;
-            let yy = (y / 2.0 + 0.5) * img.height() as f64;
+            let xx = (x / 2.0 + 0.5) * img.width() as f32;
+            let yy = (y / 2.0 + 0.5) * img.height() as f32;
 
             if let Some(pixel) = img.get_pixel_mut_checked(xx as u32, yy as u32)
             {
@@ -191,11 +224,11 @@ impl Image
 
     pub fn fractalize(&mut self) -> ()
     {
-        let mut x: f64 = 0.0;
-        let mut y: f64 = 0.5;
+        let mut x: f32 = 0.0;
+        let mut y: f32 = 0.5;
 
-        let rot: f64 = 1.724643921305295;
-        let theta_offset: f64 = 3.0466792337230033;
+        let rot: f32 = 1.724643921305295;
+        let theta_offset: f32 = 3.0466792337230033;
         let num_pts = 10_000_000_usize;
 
         // let mut rng = rand::thread_rng();
@@ -213,7 +246,7 @@ impl Image
             }
             else
             {
-                let rad = x * 0.5 + 0.5;
+                let rad: f32 = x * 0.5 + 0.5;
                 let theta = y * PI + theta_offset;
 
                 x = rad * theta.cos();
@@ -222,8 +255,8 @@ impl Image
 
             // add point to array
             // assumes square right now
-            let xx = (x / 2.0 + 0.5) * self.x as f64;
-            let yy = (y / 2.0 + 0.5) * self.x as f64;
+            let xx = (x / 2.0 + 0.5) * self.x as f32;
+            let yy = (y / 2.0 + 0.5) * self.x as f32;
 
             // println!("row: {}\ncol: {}\nindex: {}", yy as usize, xx as usize, (yy as usize) * self.x + (xx as usize));
 

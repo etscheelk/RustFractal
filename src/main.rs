@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
-use RustFractal::{fractal::Fractalize, my_grid::{MyGrid, MyGridPar, MyGreyImage}};
+use RustFractal::{fractal::{Fractalize, FractalizeParameters}, my_grid::{atomic_grid::AtomicGrid, MyGreyImage, MyGrid, MyGridPar}};
 
 fn time_and_save(dim: usize, num_points: usize) -> f64
 {
@@ -10,7 +10,7 @@ fn time_and_save(dim: usize, num_points: usize) -> f64
     let mut img = 
         MyGrid::<u8>::new(dim, dim);
 
-    img.fractalize(num_points);
+    img.fractalize(FractalizeParameters::default().with_max_points(num_points));
 
     let img: MyGreyImage<_> = img.into();
     let _ = img.save("mutex_grid_fractal.png");
@@ -51,7 +51,7 @@ where
     T: std::fmt::Debug
 {
     name: String,
-    col_names: Vec<String>,
+    // col_names: Vec<String>,
     rows: Vec<Row<T>>,
 }
 
@@ -76,19 +76,28 @@ fn main() {
     println!("Hello, world!");
 
     // test();
+    let p = 
+        FractalizeParameters::default()
+        .with_max_points(250_000_000)
+        .with_method(RustFractal::fractal::FractalMethod::Default);
+        // .with_theta_offset(0.75)
+        // .with_rot(0.37);
+
 
     let mut img = MyGrid::<u8>::new(4096, 4096);
+    // let mut img = crate::my_grid::atomic_grid::AtomicGrid::new();
+    // let mut img = AtomicGrid::new(2048, 2048);
     println!("time to create grid: {} seconds", start.elapsed().as_secs_f64());
     let start = Instant::now();
-    img.fractalize(1_000_000_000);
+    img.fractalize(p);
     println!("Time to fractalize: {} seconds", start.elapsed().as_secs_f64());
     let start = Instant::now();
     let img: MyGreyImage<u8> = img.into();
     println!("time to into MyGreyImage: {} seconds", start.elapsed().as_secs_f64());
     let start = Instant::now();
-    let _ = img.save("improved_rand.png");
+    let res = img.save("improved_rand.png");
     println!("time to save png: {} seconds", start.elapsed().as_secs_f64());
-
+    println!("{:?}", res);
     // let mut v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
     // let slice = v.as_mut_slice();
@@ -184,13 +193,13 @@ fn test() {
 #[cfg(test)]
 mod test
 {
-    use RustFractal::{fractal::Fractalize, my_grid::{MyGrid, MyGreyImage}};
+    use RustFractal::{fractal::{Fractalize, FractalizeParameters}, my_grid::{MyGreyImage, MyGrid}};
 
     #[test]
     fn test_basic() -> Result<(), image::ImageError>
     {
         let mut img = MyGrid::<u8>::new(512, 512);
-        img.fractalize(1_000_000);
+        img.fractalize(FractalizeParameters::default().with_max_points(1_000_000));
         let img: MyGreyImage<_> = img.into();
         img.save("test/test_basic.png")
     }
@@ -211,7 +220,7 @@ mod test
     fn sprs_grid_fractalize() -> Result<(), image::ImageError>
     {
         let mut s: sprs::CsMat<u8> = sprs::CsMatBase::zero((512, 512));
-        s.fractalize(1_000_000);
+        s.fractalize(FractalizeParameters::default().with_max_points(1_000_000));
 
         let s: MyGrid<u8> = s.into();
         let s: MyGreyImage<u8> = s.into();
