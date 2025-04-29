@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
-use RustFractal::{fractal::{Fractalize, FractalizeParameters}, my_grid::{atomic_grid::AtomicGrid, MyGreyImage, MyGrid, MyGridPar}};
+use RustFractal::{fractal::{Fractalize, FractalizeParameters}, my_grid::{self, atomic_grid::AtomicGrid, MyGreyImage, MyGrid, MyGridPar}};
 
 fn time_and_save(dim: usize, num_points: usize) -> f64
 {
@@ -10,7 +10,7 @@ fn time_and_save(dim: usize, num_points: usize) -> f64
     let mut img = 
         MyGrid::<u8>::new(dim, dim);
 
-    img.fractalize(FractalizeParameters::default().with_max_points(num_points));
+    img.fractalize(FractalizeParameters::default().with_max_points(num_points as u32));
 
     let img: MyGreyImage<_> = img.into();
     let _ = img.save("mutex_grid_fractal.png");
@@ -70,7 +70,8 @@ where
 //     }
 // }
 
-fn main() {
+fn a()
+{
     let start = Instant::now();
 
     println!("Hello, world!");
@@ -79,8 +80,9 @@ fn main() {
     let p = 
         FractalizeParameters::default()
         .with_max_points(250_000_000)
-        .with_method(RustFractal::fractal::FractalMethod::Default);
-        // .with_theta_offset(0.75)
+        .with_method(RustFractal::fractal::FractalMethod::MultiplyTheta)
+        ;
+        // .with_theta_offset(0.05);
         // .with_rot(0.37);
 
 
@@ -98,6 +100,13 @@ fn main() {
     let res = img.save("improved_rand.png");
     println!("time to save png: {} seconds", start.elapsed().as_secs_f64());
     println!("{:?}", res);
+}
+
+fn main() {
+    
+    my_grid::cube_cl_method::launch::<cubecl::wgpu::WgpuRuntime>(&Default::default());
+
+
     // let mut v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
     // let slice = v.as_mut_slice();

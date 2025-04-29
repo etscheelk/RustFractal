@@ -3,6 +3,8 @@ use derive_setters::*;
 use derive_getters::*;
 use image::Pixel;
 
+use cubecl::CubeType;
+
 pub trait Index2D<Idx, Idy>
 where
     Idx: ?Sized,
@@ -35,7 +37,7 @@ pub trait Fractalize
     fn fractalize(&mut self, p: FractalizeParameters) -> ();
 }
 
-#[derive(Setters, Getters, Clone, Copy)]
+#[derive(Setters, Getters, Clone, Copy, CubeType)]
 #[setters(prefix = "with_")]
 #[getter(prefix = "get_")]
 pub struct FractalizeParameters
@@ -45,10 +47,10 @@ pub struct FractalizeParameters
     rot: f32,
     theta_offset: f32,
     method: FractalMethod,
-    max_points: usize,
+    max_points: u32,
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, CubeType)]
 pub enum FractalMethod
 {
     #[default]
@@ -64,7 +66,7 @@ impl Default for FractalizeParameters
             init_x_y: (0.0, 0.5), 
             rot: 1.724643921305295,
             theta_offset: 3.0466792337230033,
-            method: Default::default(),
+            method: FractalMethod::default(),
             max_points: 1_000_000
         }
     }

@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 arr_macro = "0.2.1"
+cubecl = {version = "0.5.0",features = ["wgpu"]}
 derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
 derive_setters = "0.1.6"
 # crossbeam = "0.8.4"
