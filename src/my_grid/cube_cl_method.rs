@@ -20,7 +20,7 @@ type AtomicType = u32;
 type RandType = u32;
 
 #[cube(launch_unchecked)]
-fn cube_struct_fractalize<F: Float>
+fn cube_struct_fractalize<F: Float, RandType: Int, AtomicType: Int>
 (
     pixels: &mut Array<Atomic<AtomicType>>, 
     rand_nums: Array<RandType>,
@@ -31,6 +31,12 @@ fn cube_struct_fractalize<F: Float>
     let rot = F::new(1.72464392_f32);
     let rot_cos = F::cos(rot);
     let rot_sin = F::sin(rot);
+
+    // unsafe
+    // {
+    //     let a = pixels.index_unchecked(0);
+    //     // a.add(1);
+    // }
 
     
     // let rot_cos = comptime! { F::new(F::cos(rot)) };
@@ -52,11 +58,29 @@ fn cube_struct_fractalize<F: Float>
     {
         let this_rand = rand_nums[index];
 
-        for i in 0..64_u32
+        let high_bound = RandType::new(64);
+        let one = RandType::new(1);
+        let zero = RandType::new(0);
+        let mut i = RandType::new(0);
+        
+        // for i in 0..64_i64
+        while i < high_bound
         {
-            let r = this_rand & (1 << i);
+            // let i = i;
+            // let i = RandType::new(i);
+            // let one = RandType::new(1);
             
-            if r == 0
+            // let r = this_rand.bitand(one.shl(i));
+            // let shift = one << i;
+
+            // let shift_2 = &shift;
+
+
+            // let r = this_rand.bitand(shift);
+
+            let r = this_rand & (one << i);
+            
+            if r == zero
             {
                 x = x * rot_cos + y * rot_sin;
                 y = y * rot_cos - x * rot_sin;
@@ -82,10 +106,16 @@ fn cube_struct_fractalize<F: Float>
             // {
             //     let r = x * F::new(0.5_f32) + F::new(0.5_f32);
             //     let c = x * F::new(0.5_f32) + F::new(0.5_f32);
-            let a = pixels[0];
-            a.add(1);
+            let mut a = pixels[0];
+            // a.add(1);
+            // a.add(1);
+            // a = a + 1;
+            // a = a + AtomicType::new(1);
+            
                 
             // };
+
+            i = i + one;
         }
     }
 }
@@ -154,7 +184,7 @@ pub fn launch<R: Runtime>(device: &R::Device)
 
     unsafe
     {
-        cube_struct_fractalize::launch_unchecked::<f32, R>(
+        cube_struct_fractalize::launch_unchecked::<f32, u32, u32, R>(
             &client, 
             CubeCount::Static(1, 1, 1), 
             // CubeDim::new(rands.len() as u32 / vectorization, 1, 1), 
