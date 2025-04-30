@@ -85,7 +85,7 @@ impl Fractalize for AtomicGrid
         let rands: Vec<usize> = 
             rand::thread_rng()
             .sample_iter(distr)
-            .take(max_points / 64)
+            .take((max_points / 64) as usize)
             .collect();
 
         let rows = self.rows;

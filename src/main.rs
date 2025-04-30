@@ -1,7 +1,8 @@
 use std::time::Instant;
 
+use rand::Rng;
 use serde::{Deserialize, Serialize};
-use RustFractal::{fractal::{Fractalize, FractalizeParameters}, my_grid::{atomic_grid::AtomicGrid, MyGreyImage, MyGrid, MyGridPar}};
+use RustFractal::{fractal::{Fractalize, FractalizeParameters}, gpu_examples, my_grid::{self, atomic_grid::AtomicGrid, MyGreyImage, MyGrid, MyGridPar}};
 
 fn time_and_save(dim: usize, num_points: usize) -> f64
 {
@@ -10,7 +11,7 @@ fn time_and_save(dim: usize, num_points: usize) -> f64
     let mut img = 
         MyGrid::<u8>::new(dim, dim);
 
-    img.fractalize(FractalizeParameters::default().with_max_points(num_points));
+    img.fractalize(FractalizeParameters::default().with_max_points(num_points as u32));
 
     let img: MyGreyImage<_> = img.into();
     let _ = img.save("mutex_grid_fractal.png");
@@ -19,6 +20,19 @@ fn time_and_save(dim: usize, num_points: usize) -> f64
     let dur = start.elapsed().as_secs_f64();
     dur
 }
+
+fn time_func<F, O>(f: F) -> Out::<O>
+where
+    F: FnOnce() -> O
+{
+    let start = Instant::now();
+    let out = f();
+    let time = start.elapsed().as_secs_f64();
+
+    Out(out, time)
+}
+
+struct Out<O>(O, f64);
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct Row<T>
@@ -70,7 +84,8 @@ where
 //     }
 // }
 
-fn main() {
+fn a()
+{
     let start = Instant::now();
 
     println!("Hello, world!");
@@ -79,8 +94,9 @@ fn main() {
     let p = 
         FractalizeParameters::default()
         .with_max_points(250_000_000)
-        .with_method(RustFractal::fractal::FractalMethod::Default);
-        // .with_theta_offset(0.75)
+        .with_method(RustFractal::fractal::FractalMethod::MultiplyTheta)
+        ;
+        // .with_theta_offset(0.05);
         // .with_rot(0.37);
 
 
@@ -98,6 +114,54 @@ fn main() {
     let res = img.save("improved_rand.png");
     println!("time to save png: {} seconds", start.elapsed().as_secs_f64());
     println!("{:?}", res);
+}
+
+fn gpu_example_sqrt()
+{
+    let input = vec![1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
+    let distr = rand::distributions::Uniform::new(0.0, 1.0);
+    let input = rand::thread_rng().sample_iter(&distr).take(50_000_000).collect::<Vec<f32>>();
+
+    let Out(output, time)= time_func(
+        || 
+        gpu_examples::sqrt::launch::<cubecl::wgpu::WgpuRuntime>(&Default::default(), &input)
+    );
+    println!("Time to run GPU example: {} seconds", time);
+
+    let output = gpu_examples::sqrt::launch::<cubecl::wgpu::WgpuRuntime>(&Default::default(), &input);
+
+    let Out(correct, time) = time_func(
+        || 
+        input.iter().map(|x| x / 2_f32.sqrt()).collect::<Vec<f32>>()
+    );
+    println!("Time to run CPU example: {} seconds", time);
+
+    // let correct = input.iter().map(|x| x / 2_f32.sqrt()).collect::<Vec<f32>>();
+
+    let test = correct.iter().zip(output.iter())
+    .filter_map(
+        |(&a, &b)|
+        {
+            match ((a-b).abs() < 0.0001)
+            {
+                true => None,
+                false => Some((a, b))
+            }
+        }
+    );
+
+    // println!("All elements are equal: {}", test.count() == 0);
+    println!("Bad pairs: {:?}", test.collect::<Vec<_>>());
+}
+
+fn main() {
+
+    gpu_example_sqrt();
+
+    // println!("input: {:?}", input);
+    // println!("output: {:?}", output);
+
+
     // let mut v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
     // let slice = v.as_mut_slice();

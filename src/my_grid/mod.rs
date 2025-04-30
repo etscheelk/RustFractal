@@ -1,10 +1,9 @@
 pub mod sprs_grid;
 pub mod atomic_grid;
+pub mod cube_cl_method;
 
 use std::{f32::consts::PI, ops::{Deref, DerefMut}, thread};
 
-use image::flat;
-use num_traits::Float;
 use rand::prelude::*;
 
 use crate::fractal::FractalizeParameters;
@@ -98,14 +97,14 @@ where
         let rot_sin = rot.sin();
 
         let theta_offset = p.theta_offset();
-        let theta_add = PI + theta_offset;
-        let theta_mult =  PI * theta_offset;;
+        // let _theta_add = PI + theta_offset;
+        // let theta_mult = PI * theta_offset;
 
-        let method = p.method();
+        let _method = *p.method();
 
         let distr = 
             rand::distributions::Uniform::new(0, usize::MAX);
-        let rands: Vec<usize> = rand::thread_rng().sample_iter(&distr).take(max_points / 64).collect();
+        let rands: Vec<usize> = rand::thread_rng().sample_iter(&distr).take((max_points / 64) as usize).collect();
 
 
         let rows = self.rows;
@@ -125,7 +124,14 @@ where
             else
             {
                 let rad = x * 0.5 + 0.5;
-                let theta: f32 = y * theta_mult;
+                // let theta: f32 = y * PI + theta_offset;
+
+                use crate::fractal::FractalMethod::*;
+                let theta: f32 = match _method
+                {
+                    Default => y * PI + theta_offset,
+                    MultiplyTheta => y * PI * theta_offset,
+                };
                 (
                     rad * theta.cos(),
                     rad * theta.sin()
@@ -333,12 +339,12 @@ where
         
                     if let Some(pixel) = self.grid.get_mut(flat_index(r, c))
                     {
-                        *pixel = match pixel.checked_add(&T::one())
-                        {
-                            Some(v) => v,
-                            None => *pixel
-                        }
-                        // *pixel += T::one();
+                        // *pixel = match pixel.checked_add(&T::one())
+                        // {
+                        //     Some(v) => v,
+                        //     None => *pixel
+                        // }
+                        *pixel += T::one();
                     }
                 }
             }
