@@ -122,7 +122,7 @@ fn gpu_example_sqrt()
     let distr = rand::distributions::Uniform::new(0.0, 1.0);
     let input = rand::thread_rng().sample_iter(&distr).take(50_000_000).collect::<Vec<f32>>();
 
-    let Out(output, time)= time_func(
+    let Out(output, time) = time_func(
         || 
         gpu_examples::sqrt::launch::<cubecl::wgpu::WgpuRuntime>(&Default::default(), &input)
     );

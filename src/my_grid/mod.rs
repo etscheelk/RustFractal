@@ -10,9 +10,9 @@ use crate::fractal::FractalizeParameters;
 
 pub struct MyGrid<P>
 {
-    rows: usize,
-    cols: usize,
-    grid: Vec<P>
+    pub rows: usize,
+    pub cols: usize,
+    pub grid: Vec<P>
 }
 
 impl<P> MyGrid<P>
@@ -339,12 +339,12 @@ where
         
                     if let Some(pixel) = self.grid.get_mut(flat_index(r, c))
                     {
-                        // *pixel = match pixel.checked_add(&T::one())
-                        // {
-                        //     Some(v) => v,
-                        //     None => *pixel
-                        // }
-                        *pixel += T::one();
+                        *pixel = match pixel.checked_add(&T::one())
+                        {
+                            Some(v) => v,
+                            None => *pixel
+                        }
+                        // *pixel += T::one();
                     }
                 }
             }
