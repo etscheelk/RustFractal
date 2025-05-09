@@ -84,7 +84,7 @@ where
 //     }
 // }
 
-fn fractalize_and_save_to_disk()
+fn _fractalize_and_save_to_disk()
 {
     let Out(p, time) = time_func(
     ||
@@ -145,7 +145,7 @@ fn fractalize_and_save_to_disk()
     println!("Time to save to png: {time}");
 }
 
-fn fractalize_grid_32()
+fn _fractalize_grid_32()
 {
     let Out(p, time) = time_func(
     ||
@@ -198,12 +198,61 @@ fn fractalize_grid_32()
     println!("Time to turn into MyGreyImage: {time}");
 
     
-    let Out(_, time) = time_func(
+    let Out(res, time) = time_func(
     ||
     {
         img.save("fractal_image.png")
     });
     println!("Time to save to png: {time}");
+    println!("Result: {:?}", res);
+}
+
+fn fractalize_my_color_image()
+{
+    let Out(p, time) = time_func(
+    ||
+    {
+        let p = 
+            FractalizeParameters::default()
+            .with_max_points(125_000_000)
+            .with_method(RustFractal::fractal::FractalMethod::MultiplyTheta)
+            .with_theta_offset(std::f32::consts::PI / 5.)
+            .with_rot(std::f32::consts::PI / 5.)
+            ;
+        p
+    });
+    println!("Time to create params: {time}");
+
+    let Out(mut img, time) = time_func(
+    ||
+    {
+        let img = MyColorImage::new(4096, 4096);
+        img
+    });
+    println!("Time to create grid: {time}");
+
+    let Out(_, time) = time_func(
+    ||
+    {
+        img.fractalize(p);
+    });
+    println!("Time to fractalize: {time}");
+
+    // setting alpha to 255 in every pixel
+    let Out(_, time) = time_func(
+    ||
+    {
+        img.pixels_mut().for_each(|c| c[3] = 0xFF);
+    });
+    println!("Time to set alpha: {time}");
+    
+    let Out(res, time) = time_func(
+    ||
+    {
+        img.save("fractal_image.png")
+    });
+    println!("Time to save to png: {time}");
+    println!("Result: {:?}", res);
 }
 
 fn gpu_example_sqrt()
@@ -249,7 +298,8 @@ fn main() {
     // gpu_example_sqrt();
 
     // fractalize_and_save_to_disk();
-    fractalize_grid_32();
+    // fractalize_grid_32();
+    fractalize_my_color_image();
 
     // println!("input: {:?}", input);
     // println!("output: {:?}", output);

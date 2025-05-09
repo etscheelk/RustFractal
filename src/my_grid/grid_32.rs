@@ -2,6 +2,8 @@ use std::{f32::consts::PI, ops::{Index, IndexMut}};
 
 use rand::Rng;
 
+use crate::fractal::Fractalize;
+
 use super::Grid;
 
 #[derive(Clone, Debug)]
@@ -38,7 +40,7 @@ where
     }
 }
 
-impl super::Grid<u32> for Grid32
+impl super::Grid for Grid32
 {
     fn rows(&self) -> usize {
         self.rows
@@ -72,8 +74,115 @@ impl From<Grid32> for MyColorImage
         )
         .collect();
 
-        MyColorImage::from_vec(value.cols as u32, value.rows as u32, buf)
-        .expect("into worked")
+        let i = MyColorImage::from_vec(value.cols as u32, value.rows as u32, buf)
+        .expect("into worked");
+
+        
+
+        i
+    }
+}
+
+impl Fractalize for MyColorImage
+{
+    fn fractalize(&mut self, p: crate::fractal::FractalizeParameters) -> () 
+    {
+        let (mut x, mut y) = p.init_x_y();
+        let max_points = p.max_points();
+        
+        let rot = p.rot();
+        let rot_cos = rot.cos();
+        let rot_sin = rot.sin();
+
+        let theta_offset = p.theta_offset();
+
+        let _method = *p.method();
+
+        let distr = 
+            rand::distributions::Uniform::new(0, usize::MAX);
+        let rands: Vec<usize> = rand::thread_rng().sample_iter(&distr).take((max_points / 64) as usize).collect();
+
+
+        let rows = self.height();
+        let cols = self.width();
+
+        let transform = 
+        move |x: f32, y: f32, s: bool|
+        {
+            let (x, y) = 
+            if s
+            {
+                (
+                    x * rot_cos + y * rot_sin,
+                    y * rot_cos - x * rot_sin
+                )
+            }
+            else
+            {
+                let rad = x * 0.5 + 0.5;
+                // let theta: f32 = y * PI + theta_offset;
+
+                use crate::fractal::FractalMethod::*;
+                let theta: f32 = match _method
+                {
+                    Default => y * PI + theta_offset,
+                    MultiplyTheta => y * PI * theta_offset,
+                };
+                (
+                    rad * theta.cos(),
+                    rad * theta.sin()
+                )
+            };
+
+            (x, y)
+        };
+
+        let xy_to_grid_loc =
+        move |x: f32, y: f32| -> (u32, u32)
+        {
+            let r: f32 = (y * 0.5 + 0.5) * rows as f32;
+            let c: f32 = (x * 0.5 + 0.5) * cols as f32;
+
+            unsafe {
+                (r.to_int_unchecked(), c.to_int_unchecked())
+            }
+        };
+
+        let _do_both_transformations =
+        ||
+        {
+            for rr in rands
+            {
+                for i in 0..64_usize
+                {
+                    let this_r = rr & (1 << i);
+
+                    // first
+                    let (xx, yy) = transform(x, y, this_r == 0);
+                    let (r, c) = xy_to_grid_loc(xx, yy);
+                    if let Some(p) = self.get_pixel_mut_checked(c, r)
+                    {
+                        p[0] += 1;
+                        p[1] += 1;
+                        p[2] += 1;
+                    }
+
+                    // second
+                    let (xx, yy) = transform(x, y, this_r != 0);
+                    let (r, c) = xy_to_grid_loc(xx, yy);
+                    if let Some(p) = self.get_pixel_mut_checked(c, r)
+                    {
+                        p[0] += 1;
+                        p[1] += 1;
+                        p[2] += 1;
+                    }
+
+                    (x, y) = (xx, yy);
+                }
+            }
+        };
+        
+        _do_both_transformations();
     }
 }
 

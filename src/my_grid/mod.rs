@@ -16,7 +16,7 @@ pub struct MyGreyGrid<P>
     pub grid: Vec<P>
 }
 
-pub trait Grid<P>
+pub trait Grid
 {
     fn rows(&self) -> usize;
 
