@@ -1,6 +1,7 @@
 pub mod sprs_grid;
 pub mod atomic_grid;
 pub mod cube_cl_method;
+pub mod grid_32;
 
 use std::{f32::consts::PI, ops::{Deref, DerefMut}, thread};
 
@@ -10,9 +11,21 @@ use crate::fractal::FractalizeParameters;
 
 pub struct MyGreyGrid<P>
 {
-    rows: usize,
-    cols: usize,
-    grid: Vec<P>
+    pub rows: usize,
+    pub cols: usize,
+    pub grid: Vec<P>
+}
+
+pub trait Grid<P>
+{
+    fn rows(&self) -> usize;
+
+    fn cols(&self) -> usize;
+
+    fn flat_index(&self, row: usize, col: usize) -> usize
+    {
+        row * self.cols() + col
+    }
 }
 
 impl<P> MyGreyGrid<P>
@@ -29,6 +42,11 @@ where
             cols,
             grid: vec![P::default(); (rows * cols) as usize]
         }
+    }
+
+    pub fn flat_index(&self, r: usize, c: usize) -> usize
+    {
+        r * self.cols + c
     }
     
     pub fn apply_all_in_parallel<F>(&mut self, threads: u16, mut f: F)

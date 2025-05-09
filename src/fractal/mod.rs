@@ -37,7 +37,7 @@ pub trait Fractalize
     fn fractalize(&mut self, p: FractalizeParameters) -> ();
 }
 
-#[derive(Setters, Getters, Clone, Copy, CubeType)]
+#[derive(Setters, Getters, Clone, Copy, CubeType, Debug)]
 #[setters(prefix = "with_")]
 #[getter(prefix = "get_")]
 pub struct FractalizeParameters
@@ -50,7 +50,7 @@ pub struct FractalizeParameters
     max_points: u32,
 }
 
-#[derive(Default, Clone, Copy, CubeType)]
+#[derive(Default, Clone, Copy, CubeType, Debug)]
 pub enum FractalMethod
 {
     #[default]

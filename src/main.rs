@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use RustFractal::{fractal::{Fractalize, FractalizeParameters}, gpu_examples, my_grid::{self, atomic_grid::AtomicGrid, MyGreyImage, MyGreyGrid, MyGridPar}};
+use RustFractal::{fractal::{Fractalize, FractalizeParameters}, gpu_examples, my_grid::{self, atomic_grid::AtomicGrid, grid_32::{Grid32, MyColorImage}, MyGreyGrid, MyGreyImage, MyGridPar}};
 
 fn time_and_save(dim: usize, num_points: usize) -> f64
 {
@@ -145,6 +145,67 @@ fn fractalize_and_save_to_disk()
     println!("Time to save to png: {time}");
 }
 
+fn fractalize_grid_32()
+{
+    let Out(p, time) = time_func(
+    ||
+    {
+        let p = 
+            FractalizeParameters::default()
+            .with_max_points(125_000_000)
+            .with_method(RustFractal::fractal::FractalMethod::MultiplyTheta)
+            .with_theta_offset(std::f32::consts::PI / 5.)
+            .with_rot(std::f32::consts::PI / 5.)
+            ;
+        p
+    });
+    println!("Time to create params: {time}");
+
+    let Out(mut img, time) = time_func(
+    ||
+    {
+        let img = Grid32::new(4096, 4096);
+        img
+    });
+    println!("Time to create grid: {time}");
+
+    let Out(_, time) = time_func(
+    ||
+    {
+        img.fractalize(p);
+    });
+    println!("Time to fractalize: {time}");
+
+
+    // let Out(_, time) = time_func(
+    // ||
+    // {
+    //     img.apply_all_in_parallel(4, |p|
+    //     {
+    //         // (*p as f32).sqrt() as u8
+    //         if let Some(pp) = (*p).checked_add(1) { pp } else { *p }
+    //     });
+    // });
+    // println!("Time to apply all in parallel: {time}");
+
+
+    let Out(img, time) = time_func(
+    ||
+    {
+        let img: MyColorImage = img.into();
+        img
+    });
+    println!("Time to turn into MyGreyImage: {time}");
+
+    
+    let Out(_, time) = time_func(
+    ||
+    {
+        img.save("fractal_image.png")
+    });
+    println!("Time to save to png: {time}");
+}
+
 fn gpu_example_sqrt()
 {
     let input = vec![1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
@@ -171,7 +232,7 @@ fn gpu_example_sqrt()
     .filter_map(
         |(&a, &b)|
         {
-            match ((a-b).abs() < 0.0001)
+            match (a-b).abs() < 0.0001
             {
                 true => None,
                 false => Some((a, b))
@@ -187,7 +248,8 @@ fn main() {
 
     // gpu_example_sqrt();
 
-    fractalize_and_save_to_disk();
+    // fractalize_and_save_to_disk();
+    fractalize_grid_32();
 
     // println!("input: {:?}", input);
     // println!("output: {:?}", output);
