@@ -4,7 +4,7 @@ use rand::prelude::*;
 
 use crate::fractal::FractalizeParameters;
 
-use super::MyGrid;
+use super::MyGreyGrid;
 
 // FAR TOO SLOW
 impl crate::fractal::Fractalize for sprs::CsMat<u8>
@@ -65,7 +65,7 @@ impl crate::fractal::Fractalize for sprs::CsMat<u8>
     }
 }
 
-impl From<sprs::CsMat<u8>> for MyGrid<u8>
+impl From<sprs::CsMat<u8>> for MyGreyGrid<u8>
 {
     fn from(value: sprs::CsMat<u8>) -> Self {
         // read sparse matrix data into self.grid
@@ -85,6 +85,6 @@ impl From<sprs::CsMat<u8>> for MyGrid<u8>
             }
         }
 
-        MyGrid { rows: value.rows(), cols: value.cols(), grid }
+        MyGreyGrid { rows: value.rows(), cols: value.cols(), grid }
     }
 }

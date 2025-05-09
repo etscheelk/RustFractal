@@ -2,14 +2,14 @@ use std::time::Instant;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use RustFractal::{fractal::{Fractalize, FractalizeParameters}, gpu_examples, my_grid::{self, atomic_grid::AtomicGrid, MyGreyImage, MyGrid, MyGridPar}};
+use RustFractal::{fractal::{Fractalize, FractalizeParameters}, gpu_examples, my_grid::{self, atomic_grid::AtomicGrid, MyGreyImage, MyGreyGrid, MyGridPar}};
 
 fn time_and_save(dim: usize, num_points: usize) -> f64
 {
     let start = Instant::now();
 
     let mut img = 
-        MyGrid::<u8>::new(dim, dim);
+        MyGreyGrid::<u8>::new(dim, dim);
 
     img.fractalize(FractalizeParameters::default().with_max_points(num_points as u32));
 
@@ -84,36 +84,65 @@ where
 //     }
 // }
 
-fn a()
+fn fractalize_and_save_to_disk()
 {
-    let start = Instant::now();
+    let Out(p, time) = time_func(
+    ||
+    {
+        let p = 
+            FractalizeParameters::default()
+            .with_max_points(125_000_000)
+            .with_method(RustFractal::fractal::FractalMethod::MultiplyTheta)
+            .with_theta_offset(std::f32::consts::PI / 5.)
+            .with_rot(std::f32::consts::PI / 5.)
+            ;
+        p
+    });
+    println!("Time to create params: {time}");
 
-    println!("Hello, world!");
+    let Out(mut img, time) = time_func(
+    ||
+    {
+        let img = MyGreyGrid::<u8>::new(4096, 4096);
+        img
+    });
+    println!("Time to create grid: {time}");
 
-    // test();
-    let p = 
-        FractalizeParameters::default()
-        .with_max_points(250_000_000)
-        .with_method(RustFractal::fractal::FractalMethod::MultiplyTheta)
-        ;
-        // .with_theta_offset(0.05);
-        // .with_rot(0.37);
+    let Out(_, time) = time_func(
+    ||
+    {
+        img.fractalize(p);
+    });
+    println!("Time to fractalize: {time}");
 
 
-    let mut img = MyGrid::<u8>::new(4096, 4096);
-    // let mut img = crate::my_grid::atomic_grid::AtomicGrid::new();
-    // let mut img = AtomicGrid::new(2048, 2048);
-    println!("time to create grid: {} seconds", start.elapsed().as_secs_f64());
-    let start = Instant::now();
-    img.fractalize(p);
-    println!("Time to fractalize: {} seconds", start.elapsed().as_secs_f64());
-    let start = Instant::now();
-    let img: MyGreyImage<u8> = img.into();
-    println!("time to into MyGreyImage: {} seconds", start.elapsed().as_secs_f64());
-    let start = Instant::now();
-    let res = img.save("improved_rand.png");
-    println!("time to save png: {} seconds", start.elapsed().as_secs_f64());
-    println!("{:?}", res);
+    let Out(_, time) = time_func(
+    ||
+    {
+        img.apply_all_in_parallel(4, |p|
+        {
+            // (*p as f32).sqrt() as u8
+            if let Some(pp) = (*p).checked_add(1) { pp } else { *p }
+        });
+    });
+    println!("Time to apply all in parallel: {time}");
+
+
+    let Out(img, time) = time_func(
+    ||
+    {
+        let img: MyGreyImage<u8> = img.into();
+        img
+    });
+    println!("Time to turn into MyGreyImage: {time}");
+
+    
+    let Out(_, time) = time_func(
+    ||
+    {
+        img.save("fractal_image.png")
+    });
+    println!("Time to save to png: {time}");
 }
 
 fn gpu_example_sqrt()
@@ -122,7 +151,7 @@ fn gpu_example_sqrt()
     let distr = rand::distributions::Uniform::new(0.0, 1.0);
     let input = rand::thread_rng().sample_iter(&distr).take(50_000_000).collect::<Vec<f32>>();
 
-    let Out(output, time)= time_func(
+    let Out(output, time) = time_func(
         || 
         gpu_examples::sqrt::launch::<cubecl::wgpu::WgpuRuntime>(&Default::default(), &input)
     );
@@ -156,7 +185,9 @@ fn gpu_example_sqrt()
 
 fn main() {
 
-    gpu_example_sqrt();
+    // gpu_example_sqrt();
+
+    fractalize_and_save_to_disk();
 
     // println!("input: {:?}", input);
     // println!("output: {:?}", output);
@@ -257,13 +288,13 @@ fn test() {
 #[cfg(test)]
 mod test
 {
-    use RustFractal::{fractal::{Fractalize, FractalizeParameters}, my_grid::{MyGreyImage, MyGrid}};
+    use RustFractal::{fractal::{Fractalize, FractalizeParameters}, my_grid::{MyGreyImage, MyGreyGrid}};
 
     #[test]
     fn test_basic() -> Result<(), image::ImageError>
     {
-        let mut img = MyGrid::<u8>::new(512, 512);
-        img.fractalize(FractalizeParameters::default().with_max_points(1_000_000));
+        let mut img = MyGreyGrid::<u8>::new(512, 512);
+        img.fractalize(FractalizeParameters::default().with_max_points(2_000_000));
         let img: MyGreyImage<_> = img.into();
         img.save("test/test_basic.png")
     }
@@ -272,7 +303,7 @@ mod test
     fn mutex_grid_random_static() -> Result<(), image::ImageError>
     {
         let mut img = 
-            MyGrid::<u8>::new(256, 256);
+            MyGreyGrid::<u8>::new(256, 256);
         
         img.r#static();
 
@@ -286,7 +317,7 @@ mod test
         let mut s: sprs::CsMat<u8> = sprs::CsMatBase::zero((512, 512));
         s.fractalize(FractalizeParameters::default().with_max_points(1_000_000));
 
-        let s: MyGrid<u8> = s.into();
+        let s: MyGreyGrid<u8> = s.into();
         let s: MyGreyImage<u8> = s.into();
         s.save("test/sprs_grid_fractalize.png")
     }

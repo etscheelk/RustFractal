@@ -8,14 +8,14 @@ use rand::prelude::*;
 
 use crate::fractal::FractalizeParameters;
 
-pub struct MyGrid<P>
+pub struct MyGreyGrid<P>
 {
     rows: usize,
     cols: usize,
     grid: Vec<P>
 }
 
-impl<P> MyGrid<P>
+impl<P> MyGreyGrid<P>
 where
     P: image::Primitive + Default
 {
@@ -23,7 +23,7 @@ where
     /// of dimensions width x height
     pub fn new(rows: usize, cols: usize) -> Self
     {
-        MyGrid
+        MyGreyGrid
         {
             rows,
             cols,
@@ -83,7 +83,7 @@ where
     }
 }
 
-impl<T> crate::fractal::Fractalize for MyGrid<T>
+impl<T> crate::fractal::Fractalize for MyGreyGrid<T>
 where
     T: image::Primitive + num_traits::CheckedAdd + Send + std::ops::AddAssign + std::ops::Add,
 {
@@ -324,41 +324,84 @@ where
         };
 
         // no parallelization
-        let _default =
+        // let _default =
+        // ||
+        // {
+        //     for r in rands
+        //     {
+        //         for i in 0..64_usize
+        //         {
+        //             let this_r = r & (1 << i);
+            
+        //             (x, y) = transform(x, y, this_r != 0);
+        
+        //             let (r, c) = xy_to_grid_loc(x, y);
+        
+        //             if let Some(pixel) = self.grid.get_mut(flat_index(r, c))
+        //             {
+        //                 // *pixel = match pixel.checked_add(&T::one())
+        //                 // {
+        //                 //     Some(v) => v,
+        //                 //     None => *pixel
+        //                 // }
+        //                 *pixel += T::one();
+        //             }
+        //         }
+        //     }
+        // };
+
+        let _do_both_transformations =
         ||
         {
-            for r in rands
+            for rr in rands
             {
                 for i in 0..64_usize
                 {
-                    let this_r = r & (1 << i);
-            
-                    (x, y) = transform(x, y, this_r != 0);
-        
-                    let (r, c) = xy_to_grid_loc(x, y);
-        
+                    let this_r = rr & (1 << i);
+
+                    // first
+                    let (xx, yy) = transform(x, y, this_r == 0);
+                    let (r, c) = xy_to_grid_loc(xx, yy);
                     if let Some(pixel) = self.grid.get_mut(flat_index(r, c))
+                    // let pixel = &mut self.grid[flat_index(r,c)];
                     {
-                        // *pixel = match pixel.checked_add(&T::one())
-                        // {
-                        //     Some(v) => v,
-                        //     None => *pixel
-                        // }
-                        *pixel += T::one();
+                        *pixel = match pixel.checked_add(&T::one())
+                        {
+                            Some(v) => v,
+                            None => *pixel,
+                        };
+                        // *pixel += T::one();
                     }
+
+                    // second
+                    let (xx, yy) = transform(x, y, this_r != 0);
+                    let (r, c) = xy_to_grid_loc(xx, yy);
+                    if let Some(pixel) = self.grid.get_mut(flat_index(r, c))
+                    // let pixel = &mut self.grid[flat_index(r,c)];
+                    {
+                        *pixel = match pixel.checked_add(&T::one())
+                        {
+                            Some(v) => v,
+                            None => *pixel,
+                        };
+                        // *pixel += T::one();
+                    }
+
+                    (x, y) = (xx, yy);
                 }
             }
         };
 
-        _default();
+        // _default();
+        _do_both_transformations();
     }
 }
 
-pub struct MyGridPar<P>(MyGrid<P>);
+pub struct MyGridPar<P>(MyGreyGrid<P>);
 
 impl<P> Deref for MyGridPar<P>
 {
-    type Target = MyGrid<P>;
+    type Target = MyGreyGrid<P>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -380,11 +423,11 @@ where
     /// of dimensions width x height
     pub fn new(rows: usize, cols: usize) -> Self
     {
-        MyGridPar(MyGrid::new(rows, cols))
+        MyGridPar(MyGreyGrid::new(rows, cols))
     }
 }
 
-impl<P> From<MyGridPar<P>> for MyGrid<P>
+impl<P> From<MyGridPar<P>> for MyGreyGrid<P>
 {
     fn from(value: MyGridPar<P>) -> Self {
         value.0
@@ -520,7 +563,7 @@ impl crate::fractal::Fractalize for MyGridPar<u8>
 pub type MyGreyImage<P> = image::ImageBuffer<image::Luma<P>, Vec<P>>;
 
 /// Conversion to a grey image
-impl<P> Into<MyGreyImage<P>> for MyGrid<P>
+impl<P> Into<MyGreyImage<P>> for MyGreyGrid<P>
 where
     P: image::Primitive
 { 
@@ -542,7 +585,7 @@ mod test
     fn main()
     {
         use crate::fractal::Fractalize;
-        let mut img = super::MyGrid::<u8>::new(1024, 1024);
+        let mut img = super::MyGreyGrid::<u8>::new(1024, 1024);
         img.fractalize(FractalizeParameters::default().with_max_points(1_000_000));
 
         let img: super::MyGreyImage<_> = img.into();
@@ -566,7 +609,7 @@ mod test
     #[test]
     fn image_send_sync()
     {
-        let m = super::MyGrid::<u16>::new(48, 48);
+        let m = super::MyGreyGrid::<u16>::new(48, 48);
 
         let _v: &dyn Send = &m;
         let _v: &dyn Sync = &m;
@@ -580,7 +623,7 @@ mod test
     #[test]
     fn image_buffer_from_arc_buf()
     {
-        use crate::my_grid::{MyGrid, MyGreyImage};
+        use crate::my_grid::{MyGreyGrid, MyGreyImage};
 
         let img = 
             image::ImageBuffer::<image::Luma<u16>, std::sync::Arc<_> >::from_raw(
@@ -590,7 +633,7 @@ mod test
             );
         assert_ne!(img, None);
 
-        let img: MyGrid<u16> = MyGrid::<u16>::new(128, 128);
+        let img: MyGreyGrid<u16> = MyGreyGrid::<u16>::new(128, 128);
         let _img: MyGreyImage<u16> = img.into();
     }
 }
