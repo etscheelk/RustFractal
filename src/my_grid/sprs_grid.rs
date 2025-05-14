@@ -12,8 +12,8 @@ impl crate::fractal::Fractalize for sprs::CsMat<u8>
     fn fractalize(&mut self, p: FractalizeParameters) -> () 
     {
         let distr = 
-            rand::distributions::Uniform::new(0, self.rows());
-        let mut rng = rand::thread_rng();
+            rand::distr::Uniform::new(0, self.rows()).unwrap();
+        let mut rng = rand::rng();
         let (mut x, mut y) = p.init_x_y();
         let max_points = p.max_points();
         let rot = p.rot();

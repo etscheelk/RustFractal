@@ -37,20 +37,30 @@ pub trait Fractalize
     fn fractalize(&mut self, p: FractalizeParameters) -> ();
 }
 
-#[derive(Setters, Getters, Clone, Copy, CubeType, Debug)]
+// pub trait AsyncFractalize: Fractalize
+// {
+//     fn async_fractalize(&mut self, p: FractalizeParameters) -> impl std::future::Future<Output = ()> + Send + Sync
+//     {
+//         // todo!()
+//         let a: Box<std::future::IntoFuture>;
+//         self.fractalize(p)
+//     }
+// }
+
+#[derive(Setters, Getters, Clone, Copy, CubeType, Debug, PartialEq)]
 #[setters(prefix = "with_")]
 #[getter(prefix = "get_")]
 pub struct FractalizeParameters
 {
     // #[setters(skip)]
-    init_x_y: (f32, f32),
-    rot: f32,
-    theta_offset: f32,
-    method: FractalMethod,
-    max_points: u32,
+    pub init_x_y: (f32, f32),
+    pub rot: f32,
+    pub theta_offset: f32,
+    pub method: FractalMethod,
+    pub max_points: u32,
 }
 
-#[derive(Default, Clone, Copy, CubeType, Debug)]
+#[derive(Default, Clone, Copy, CubeType, Debug, PartialEq, Eq)]
 pub enum FractalMethod
 {
     #[default]

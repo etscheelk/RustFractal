@@ -77,8 +77,6 @@ impl From<Grid32> for MyColorImage
         let i = MyColorImage::from_vec(value.cols as u32, value.rows as u32, buf)
         .expect("into worked");
 
-        
-
         i
     }
 }
@@ -99,8 +97,9 @@ impl Fractalize for MyColorImage
         let _method = *p.method();
 
         let distr = 
-            rand::distributions::Uniform::new(0, usize::MAX);
-        let rands: Vec<usize> = rand::thread_rng().sample_iter(&distr).take((max_points / 64) as usize).collect();
+            rand::distr::Uniform::new(0, u64::MAX).unwrap();
+        // let rands = rand::rng().sample_iter(distr)
+        let rands: Vec<u64> = rand::rng().sample_iter(&distr).take((max_points / 64) as usize).collect();
 
 
         let rows = self.height();
@@ -153,7 +152,7 @@ impl Fractalize for MyColorImage
         {
             for rr in rands
             {
-                for i in 0..64_usize
+                for i in 0..64_u64
                 {
                     let this_r = rr & (1 << i);
 
@@ -162,9 +161,9 @@ impl Fractalize for MyColorImage
                     let (r, c) = xy_to_grid_loc(xx, yy);
                     if let Some(p) = self.get_pixel_mut_checked(c, r)
                     {
-                        p[0] += 1;
-                        p[1] += 1;
-                        p[2] += 1;
+                        p[0] = p[0].checked_add(1).unwrap_or(p[0]);
+                        p[1] = p[1].checked_add(1).unwrap_or(p[1]);
+                        p[2] = p[2].checked_add(1).unwrap_or(p[2]);
                     }
 
                     // second
@@ -172,9 +171,9 @@ impl Fractalize for MyColorImage
                     let (r, c) = xy_to_grid_loc(xx, yy);
                     if let Some(p) = self.get_pixel_mut_checked(c, r)
                     {
-                        p[0] += 1;
-                        p[1] += 1;
-                        p[2] += 1;
+                        p[0] = p[0].checked_add(1).unwrap_or(p[0]);
+                        p[1] = p[1].checked_add(1).unwrap_or(p[1]);
+                        p[2] = p[2].checked_add(1).unwrap_or(p[2]);
                     }
 
                     (x, y) = (xx, yy);
@@ -202,8 +201,8 @@ impl crate::fractal::Fractalize for Grid32
         let _method = *p.method();
 
         let distr = 
-            rand::distributions::Uniform::new(0, usize::MAX);
-        let rands: Vec<usize> = rand::thread_rng().sample_iter(&distr).take((max_points / 64) as usize).collect();
+            rand::distr::Uniform::new(0, usize::MAX).unwrap();
+        let rands: Vec<usize> = rand::rng().sample_iter(&distr).take((max_points / 64) as usize).collect();
 
 
         let rows = self.rows;

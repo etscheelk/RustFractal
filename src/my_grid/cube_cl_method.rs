@@ -170,9 +170,9 @@ pub fn launch<R: Runtime>(device: &R::Device)
 
     let points = 50_000_000;
 
-    let distr = rand::distributions::Uniform::new(RandType::MIN, RandType::MAX);
+    let distr = rand::distr::Uniform::new(RandType::MIN, RandType::MAX).unwrap();
     let rands = 
-        rand::thread_rng()
+        rand::rng()
         .sample_iter(&distr)
         .take(points / RandType::BITS as usize)
         .collect::<Vec<RandType>>();

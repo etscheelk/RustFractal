@@ -12,11 +12,13 @@ derive_setters = "0.1.6"
 image = "0.25.2"
 num-traits = "0.2.19"
 postcard = { version = "1.0.10", features = ["use-std"] }
-rand = "0.8.5"
+rand = { version = "0.9.1" }
 serde = { version = "1.0.209", features = ["derive"] }
 sprs = { version = "0.11.0", features = ["serde"] }
+getrandom = { version = "0.3.0", features = ["wasm_js"] }
 
 [profile.release]
 debug = true
 # lto = true
 # codegen-units = 1
+

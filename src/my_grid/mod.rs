@@ -5,7 +5,7 @@ pub mod grid_32;
 
 use std::{f32::consts::PI, ops::{Deref, DerefMut}, thread};
 
-use rand::prelude::*;
+use rand::{prelude::*, rng};
 
 use crate::fractal::FractalizeParameters;
 
@@ -83,8 +83,8 @@ where
         P: num_traits::CheckedAdd
     {
         let distr = 
-            rand::distributions::Uniform::new(0, self.rows);
-        let mut rng = rand::thread_rng();
+            rand::distr::Uniform::new(0, self.rows).unwrap();
+        let mut rng = rand::rng();
         for _ in 0..1_000_000
         {
             let x = distr.sample(&mut rng);
@@ -121,8 +121,8 @@ where
         let _method = *p.method();
 
         let distr = 
-            rand::distributions::Uniform::new(0, usize::MAX);
-        let rands: Vec<usize> = rand::thread_rng().sample_iter(&distr).take((max_points / 64) as usize).collect();
+            rand::distr::Uniform::new(0, usize::MAX).unwrap();
+        let rands: Vec<usize> = rand::rng().sample_iter(&distr).take((max_points / 64) as usize).collect();
 
 
         let rows = self.rows;
@@ -206,7 +206,7 @@ where
                 let handle = std::thread::spawn(
                 move ||
                 {
-                    let mut rng = thread_rng();
+                    let mut rng = rng();
                     for _ in 0..(max_points/4)
                     {
                         let b = (rng.sample(distr) & 1) == 0;
@@ -491,8 +491,8 @@ impl crate::fractal::Fractalize for MyGridPar<u8>
                         sprs::CsMatBase::zero(matrix_size);
                     
                     // assumes square
-                    let distr = rand::distributions::Uniform::new(0, matrix_size.0);
-                    let mut rng = rand::thread_rng();
+                    let distr = rand::distr::Uniform::new(0, matrix_size.0).unwrap();
+                    let mut rng = rand::rng();
 
                     let mut x: f32 = 0.0;
                     let mut y: f32 = 0.5;

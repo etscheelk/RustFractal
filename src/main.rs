@@ -258,8 +258,8 @@ fn fractalize_my_color_image()
 fn gpu_example_sqrt()
 {
     let input = vec![1.0_f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0];
-    let distr = rand::distributions::Uniform::new(0.0, 1.0);
-    let input = rand::thread_rng().sample_iter(&distr).take(50_000_000).collect::<Vec<f32>>();
+    let distr = rand::distr::Uniform::new(0.0, 1.0).unwrap();
+    let input = rand::rng().sample_iter(&distr).take(50_000_000).collect::<Vec<f32>>();
 
     let Out(output, time) = time_func(
         || 

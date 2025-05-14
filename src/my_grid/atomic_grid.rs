@@ -1,4 +1,4 @@
-use std::{cell::RefCell, sync::{atomic::AtomicU8, Arc, Mutex}};
+use std::sync::{Arc, Mutex};
 
 use rand::Rng;
 
@@ -81,9 +81,9 @@ impl Fractalize for AtomicGrid
         let theta_offset = p.theta_offset();
         let method = p.method();
         
-        let distr = rand::distributions::Uniform::new(0, usize::MAX);
+        let distr = rand::distr::Uniform::new(0, usize::MAX).unwrap();
         let rands: Vec<usize> = 
-            rand::thread_rng()
+            rand::rng()
             .sample_iter(distr)
             .take((max_points / 64) as usize)
             .collect();
